@@ -3,13 +3,16 @@
   (:require [clojure.algo.monads :refer [defmonad domonad]]
             [clojure.core.match :refer [match]]))
 
-(defrecord Maybe [t v e])
-(alter-meta! #'->Maybe assoc :no-doc true :private true)
-(alter-meta! #'map->Maybe assoc :no-doc true :private true)
+;; (defrecord Maybe [t v e])
+;; (alter-meta! #'->Maybe assoc :no-doc true :private true)
+;; (alter-meta! #'map->Maybe assoc :no-doc true :private true)
 
-(defn ok [v] (->Maybe :ok v nil))
-(defn fail [k] (->Maybe :fail nil k))
-(defn exception [e] (->Maybe :exc nil e)
+;; (defn ok [v] (->Maybe :ok v nil))
+;; (defn fail [k] (->Maybe :fail nil k))
+;; (defn exception [e] (->Maybe :exc nil e)
+
+(defn ok [v] [v nil])
+(defn fail [v] [nil v])
 
 (defn- m-result-mm
   [value]
@@ -18,10 +21,8 @@
 (defn- m-bind-mm
   [mv f]
   (match mv
-    {:v a :e nil} (f a)
-    {:v nil :e a} mv))
-
-    ;; :else   (f mv)))
+    [_ nil] (f (first mv))
+    [nil a] mv))
 
 (defmonad maybe-mm
   [m-result m-result-mm
