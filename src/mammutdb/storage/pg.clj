@@ -31,7 +31,8 @@
             [jdbc.pool.dbcp :as dbcp]
             [mammutdb.storage.protocol :as proto]
             [mammutdb.core.types.maybe :as maybe]
-            [mammutdb.core.types.json :refer [json]]))
+            [mammutdb.core.types.json :refer [json]])
+  (:import org.postgresql.util.PSQLException))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -57,13 +58,19 @@ a corresponding table name for these type."
     :main (str name "_c")
     :revision (str name "_r")))
 
-
 (defn record->object
   [record]
   (let [id  (:id record)
         rev (:revision record)]
     (-> (:data record)
         (assoc :_id id :_rev rev))))
+
+(defmacro with-possible-exception
+  [& body]
+  `(try
+     (do ~@body)
+     (catch PSQLException e
+       ((maybe/fail {:type :exception :value e})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Implementation
@@ -81,7 +88,9 @@ a corresponding table name for these type."
                   "  metadata json DEFAULT '{}'::json,"
                   "  created_at timestamp with timezone DEFAULT now()"
                   ");")]
-    (j/execute! conn sql1 sql2)))
+    (with-possible-exception
+      (j/execute! conn sql1 sql2)
+      (maybe/ok true))))
 
 (defn initialized?
   "Check if current storage layout is intialized."
@@ -102,13 +111,11 @@ previously created."
                  "  SELECT * FROM mammutdb_collections "
                  "  WHERE name = ? "
                  ");")]
-    (try
+    (with-possible-exception
       (let [res (first (j/query conn [sql name]))]
         (if res
           (maybe/ok collection)
-          (maybe/fail :collection-does-not-exists)))
-      (catch Exception e
-        (maybe/exception e)))))
+          (maybe/fail {:type :fail :value :collection-does-not-exists}))))))
 
 (defn create-collection
   "Given a name, create and register new collection."
@@ -130,24 +137,20 @@ previously created."
                   ");")
         sql3 (str "INSERT INTO mammut_collections "
                   "(name) VALUES (?)")]
-    (try
+    (with-possible-exception
       (j/execute! conn sql1 sql2)
       (j/execute-prepared! sql3 [name])
-      (maybe/ok :empty)
-      (catch Exception e
-        (maybe/fail e)))))
+      (maybe/ok true))))
 
 (defn get-object-by-id
   [conn collname id]
   (let [sql (str "SELECT * FROM " collname "_c "
                  "WHERE id = ?;")]
-    (try
+    (with-possible-exception
       (let [res (first (j/query conn [sql id]))]
         (if res
           (maybe/ok (record->object res))
-          (maybe/fail :
-      (catch Exception e
-        (maybe/fail e)))))
+          (maybe/fail {:type :fail :value :object-does-not-exists}))))))
 
 (defn- store-new-object
   [conn collection object]
@@ -156,16 +159,14 @@ previously created."
         ctrevision (collection-name->tablename :revision collection)
         sql1       (str "INSERT INTO " ctmain " (data) "
                         "VALUES  (?) RETURNING id, revision;")]
-    (try
+    (with-possible-exception
       ;; We use query because insert with returning
       ;; statement works as query and return one record.
       (let [res (j/query conn [sql1 object])
             res (first res)]
         (maybe/ok (assoc object
                     :_id (:id res)
-                    :_rev (:revision res))))
-      (catch Exception e
-        (maybe/fail e)))))
+                    :_rev (:revision res)))))))
 
 (defn- store-existing-object
   [conn collection {:keys [_id] :as newobj} {:keys [_rev] :as oldobj}]
@@ -177,12 +178,10 @@ previously created."
                         "WHERE id = ?;")
         sql2       (str "INSERT INTO " ctrevision " (id, data, revision) "
                         "VALUES (?, ?, ?);")]
-    (try
+    (with-possible-exception
       (j/execute-prepared! conn sql1 [(inc _rev) newobj _id])
       (j/execute-prepared! conn sql2 [_id oldobj _rev])
-      (maybe/ok (assoc newobj :_rev (inc _rev)))
-      (catch Exception e
-        (maybe/fail e)))))
+      (maybe/ok (assoc newobj :_rev (inc _rev))))))
 
 (defn store-object
   [conn collection {:keys [_id] :as newobj}]
