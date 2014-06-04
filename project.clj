@@ -44,8 +44,8 @@
                  [cheshire "5.3.1"]
                  [postgresql "9.3-1101.jdbc41"]
                  [buddy "0.1.1"]
-                 [be.niwi/clj.jdbc "0.1.1"]
-                 [be.niwi/clj.jdbc-dbcp "0.1.1"]]
+                 [clojure.jdbc "0.2.0b1"]
+                 [clojure.jdbc/clojure.jdbc-dbcp "0.2.0"]]
   :main ^:skip-aot mammutdb.cli
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
