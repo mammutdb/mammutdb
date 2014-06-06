@@ -7,6 +7,23 @@ Fully transactional and immutable opensource database.
 
 Currently on design phases.
 
+
+## Ideas
+
+- Revision system/Transaction log (CouchDB)
+- MVCC (PostgreSQL and CouchDB)
+- Immutable database (related to transaction log) (Datomic)
+- Garbage collector (like postgresql vacuum or couchdb gc) (PostgreSQL and CouchDB)
+- Client interface as HTTP (CouchDB)
+- Collection/document concept (MongoDB)
+- Strong transactions and safe persistence (PostgreSQL)
+- Optimistic concurrency control (CouchDB)
+- Composable configuration for collection types
+- JSON based (CouchDB)
+- Pluggable schema definition
+- Pluggable client interfaces
+
+
 ## Goals
 
 ### Main goals
@@ -28,6 +45,7 @@ Currently on design phases.
 
 ### Second phase goals
 
+- Pluggable schema definition.
 - Advanced query language support.
 - Support for joins between collections.
 - Support store binary blobs.
