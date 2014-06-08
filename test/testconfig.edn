@@ -1,0 +1,5 @@
+{:transport {:path "mammutdb.transports.http"
+             :params {:port 9002}}
+ :storage {:host "127.0.0.1"
+           :port 5432
+           :name "test"}}
