@@ -32,7 +32,6 @@
             :url "http://opensource.org/licenses/BSD-3-Clause"}
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.reader "0.8.4"]
-                 [jarohen/nomad "0.6.3" :exclusions [org.clojure/tools.reader]]
                  [org.clojure/algo.monads "0.1.5"]
                  [org.clojure/core.match "0.2.1"]
                  [cheshire "5.3.1"]
