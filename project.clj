@@ -31,21 +31,25 @@
   :license {:name "BSD"
             :url "http://opensource.org/licenses/BSD-3-Clause"}
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [com.stuartsierra/component "0.2.1"]
                  [org.clojure/tools.reader "0.8.4"]
                  [jarohen/nomad "0.6.3" :exclusions [org.clojure/tools.reader]]
-                 [compojure "1.1.6"]
-                 [info.sunng/ring-jetty9-adapter "0.6.0" :exclusions [ring/ring-core]]
-                 [org.clojure/tools.namespace "0.2.4"]
-                 [ring/ring-core "1.2.2" :exclusions [javax.servlet/servlet-api]]
-                 [ring/ring-servlet "1.2.2" :exclusions [javax.servlet/servlet-api]]
                  [org.clojure/algo.monads "0.1.5"]
                  [org.clojure/core.match "0.2.1"]
                  [cheshire "5.3.1"]
-                 [postgresql "9.3-1101.jdbc41"]
                  [buddy "0.1.1"]
-                 [clojure.jdbc "0.2.0b1"]
-                 [clojure.jdbc/clojure.jdbc-dbcp "0.2.0"]]
+
+                 ;; Storage
+                 [clojure.jdbc "0.2.0b2"]
+                 [clojure.jdbc/clojure.jdbc-dbcp "0.2.0"]
+                 [postgresql "9.3-1101.jdbc41"]
+
+                 ;; Http Api interface
+                 [compojure "1.1.8"]
+                 [info.sunng/ring-jetty9-adapter "0.6.0" :exclusions [ring/ring-core]]
+                 [ring/ring-core "1.2.2" :exclusions [javax.servlet/servlet-api]]
+                 [ring/ring-servlet "1.2.2" :exclusions [javax.servlet/servlet-api]]]
+                 ;; [org.clojure/tools.namespace "0.2.4"]
+
   :main ^:skip-aot mammutdb.cli
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
