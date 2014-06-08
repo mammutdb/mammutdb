@@ -1,9 +1,10 @@
 (ns mammutdb.core.types.json
+  "PostgreSQL compatible json object type."
   (:require [cheshire.core :as json]
             [jdbc.types :as jdbc-types)
   (:import org.postgresql.util.PGobject))
 
-(defrecord Json [value]
+(deftype JsonObject [v]
   jdbc-types/ISQLType
 
   (set-stmt-parameter! [self conn stmt index]
@@ -12,7 +13,7 @@
   (as-sql-type [self conn]
     (doto (PGobject.)
       (.setType "json")
-      (.setValue (json/generate-string value)))))
+      (.setValue v))))
 
 (alter-meta! #'->Json assoc :no-doc true :private true)
 (alter-meta! #'map->Json assoc :no-doc true :private true)
@@ -23,7 +24,16 @@
     (let [type  (.getType pgobj)
           value (.getValue pgobj)]
       (case type
-        "json" (json/parse-string value)
+        "json" (JsonObject. value)
         :else value))))
 
-(defn json [data] (map->JsonType {:value data}))
+(defn from-native
+  "PostgreSQL compatible json object constructor."
+  [v]
+  (JsonObject. (json/generate-string v))
+
+(defn to-native
+  "Return native clojure data from json object."
+  [v]
+  (json/parse-string (.v v)))
+
