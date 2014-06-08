@@ -47,6 +47,19 @@
   [^Object v]
   (Either. v :right))
 
+(defn left?
+  [mv]
+  (= (.type mv) :left))
+
+(defn right?
+  [mv]
+  (= (.type mv) :right))
+
+(defn from-either
+  "Return inner value of either monad."
+  [mv]
+  (.v mv))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Maybe
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
