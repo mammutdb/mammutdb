@@ -20,8 +20,12 @@
   proto/Monad
   (bind [self f]
     (if-not (= type :left)
-      (Either. (f v) :right)
-      self)))
+      (f v)
+      self))
+
+  proto/Applicative
+  (pure [_ v]
+    (Either. v type)))
 
 (defn left
   "Left constructor for Either type."
@@ -32,7 +36,6 @@
   "Right constructor for Either type."
   [^Object v]
   (Either. v :right))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Maybe
@@ -50,19 +53,27 @@
 
   proto/Monad
   (bind [self f]
-    (Just. (f v))))
+    (f v))
+
+  proto/Applicative
+  (pure [_ v]
+    (Just. v)))
 
 (deftype Nothing []
   Object
-  (equals [self other]
+  (equals [_ other]
     (instance? Nothing other))
 
-  (toString [self]
+  (toString [_]
     (with-out-str (print "")))
 
   proto/Monad
-  (bind [self f]
-    self))
+  (bind [s f]
+    s)
+
+  proto/Applicative
+  (pure [s v]
+    s))
 
 (defn just
   [v]
