@@ -18,14 +18,24 @@
     (with-out-str (print [v type])))
 
   proto/Monad
-  (bind [self f]
-    (if-not (= type :left)
-      (f v)
-      self))
+  (bind [s f]
+    (case type
+      :right (f v)
+      s))
+
+  proto/Functor
+  (fmap [s f]
+    (case type
+      :right (f v)
+      s))
 
   proto/Applicative
   (pure [_ v]
-    (Either. v type)))
+    (Either. v type))
+  (fapply [s av]
+    (case type
+      :right (proto/fmap av v)
+      s)))
 
 (defn left
   "Left constructor for Either type."
@@ -55,9 +65,15 @@
   (bind [self f]
     (f v))
 
+  proto/Functor
+  (fmap [s f]
+    (Just. (f v)))
+
   proto/Applicative
   (pure [_ v]
-    (Just. v)))
+    (Just. v))
+  (fapply [_ av]
+    (proto/fmap av v)))
 
 (deftype Nothing []
   Object
@@ -68,12 +84,14 @@
     (with-out-str (print "")))
 
   proto/Monad
-  (bind [s f]
-    s)
+  (bind [s f] s)
+
+  proto/Functor
+  (fmap [s f] s)
 
   proto/Applicative
-  (pure [s v]
-    s))
+  (pure [s v] s)
+  (fapply [s av] s))
 
 (defn just
   [v]
