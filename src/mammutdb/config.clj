@@ -13,7 +13,6 @@
 (defn- keywordize [s]
   (-> (str/lower-case s)
       (str/replace "_" "-")
-      ;; (str/replace "." "-")
       (keyword)))
 
 (defn- read-system-properties
