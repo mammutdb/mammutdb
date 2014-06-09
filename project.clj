@@ -41,6 +41,7 @@
                  [clojure.jdbc "0.2.0b2"]
                  [clojure.jdbc/clojure.jdbc-dbcp "0.2.0"]
                  [postgresql "9.3-1101.jdbc41"]
+                 [stch-library/sql "0.1.1"]
 
                  ;; Http Api interface
                  [compojure "1.1.8"]
