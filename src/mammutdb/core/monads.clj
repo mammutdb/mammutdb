@@ -50,6 +50,18 @@
   ([mv f & fs]
      (reduce bind mv (cons f fs))))
 
+(defn <$>
+  "Alias of fmap."
+  [f fv]
+  (p/fmap fv f))
+
+(defn <*>
+  "Performs a Haskell-style left-associative fapply."
+  ([af av]
+     (p/fapply af av))
+  ([af av & avs]
+     (reduce p/fapply af (cons av avs))))
+
 (defmacro mlet
   [bindings body]
   (when-not (and (vector? bindings) (even? (count bindings)))
