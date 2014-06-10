@@ -31,22 +31,29 @@
       (t/right path)
       (t/left "Configuration file not specified."))))
 
-(defn read-config
+(defn- read-config-impl
   "Read config from file and return it."
-  []
-  (m/mlet [cfgpath (get-configfile-path)]
-    (if (.exists (io/as-file cfgpath))
-      (t/right (edn/read-string (slurp cfgpath)))
-      (t/left (format "Config file %s not found" cfgpath)))))
+  [path]
+  (if (.exists (io/as-file path))
+    (t/right (edn/read-string (slurp path)))
+    (t/left (format "Config file %s not found" path))))
+
+(def read-config (memoize read-config-impl))
 
 (defn read-transport-config
   "Read transport section from config"
   []
-  (m/mlet [cfg (read-config)]
-    (m/return (:transport cfg))))
+  (m/mlet [cfgpath (get-configfile-path)
+           cfg     (read-config cfgpath)]
+    (if (:transport cfg)
+      (m/return (:transport cfg))
+      (t/left "No transport configuration found con config file."))))
 
 (defn read-storage-config
   "Read storage section from config"
   []
-  (m/mlet [cfg (read-config)]
-    (m/return (:storage cfg))))
+  (m/mlet [cfgpath (get-configfile-path)
+           cfg     (read-config cfgpath)]
+    (if (:storage cfg)
+      (m/return (:storage cfg))
+      (t/left "No storage configuration found con config file."))))

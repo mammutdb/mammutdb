@@ -13,12 +13,11 @@
         (is (= (t/right "test/testconfig.edn") cfgpath)))))
 
   (testing "Read config file"
-    (binding [cfg/*config-path* "test/testconfig.edn"]
-      (let [conf (cfg/read-config)]
-        (is (t/right? conf))
-        (let [v (t/from-either conf)]
-          (is (:transport v))
-          (is (:storage v))))))
+    (let [conf (cfg/read-config "test/testconfig.edn")]
+      (is (t/right? conf))
+      (let [v (t/from-either conf)]
+        (is (:transport v))
+        (is (:storage v)))))
 
   (testing "Read transports config"
     (binding [cfg/*config-path* "test/testconfig.edn"]
