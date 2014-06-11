@@ -46,7 +46,7 @@
 (defn >>=
   "Performs a Haskell-style left-associative bind."
   ([mv f]
-     (p/bind mv f))
+     (bind mv f))
   ([mv f & fs]
      (reduce bind mv (cons f fs))))
 

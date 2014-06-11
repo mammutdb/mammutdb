@@ -26,7 +26,7 @@
   proto/Functor
   (fmap [s f]
     (case type
-      :right (f v)
+      :right (Either. (f v) :right)
       s))
 
   proto/Applicative
