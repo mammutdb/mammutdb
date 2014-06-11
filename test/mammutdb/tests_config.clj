@@ -1,32 +1,32 @@
 (ns mammutdb.tests-config
   (:require [clojure.test :refer :all]
             [clojure.java.io :as io]
-            [mammutdb.config :as cfg]
+            [mammutdb.config :as config]
             [mammutdb.core.monads :as m]
             [mammutdb.core.monads.types :as t]))
 
 
 (deftest config
   (testing "Get config file path"
-    (binding [cfg/*config-path* "test/testconfig.edn"]
-      (let [cfgpath (cfg/get-configfile-path)]
-        (is (= (t/right "test/testconfig.edn") cfgpath)))))
+    (binding [config/*config-path* "test/testconfig.edn"]
+      (let [configpath (config/get-configfile-path)]
+        (is (= (t/right "test/testconfig.edn") configpath)))))
 
   (testing "Read config file"
-    (let [conf (cfg/read-config "test/testconfig.edn")]
+    (let [conf (config/read-config "test/testconfig.edn")]
       (is (t/right? conf))
       (let [v (t/from-either conf)]
         (is (:transport v))
         (is (:storage v)))))
 
   (testing "Read transports config"
-    (binding [cfg/*config-path* "test/testconfig.edn"]
-      (let [conf (cfg/read-transport-config)]
+    (binding [config/*config-path* "test/testconfig.edn"]
+      (let [conf (config/read-transport-config)]
         (is (t/right? conf))
         (is (:path (t/from-either conf))))))
 
   (testing "Read transports config"
-    (binding [cfg/*config-path* "test/testconfig.edn"]
-      (let [conf (cfg/read-storage-config)]
+    (binding [config/*config-path* "test/testconfig.edn"]
+      (let [conf (config/read-storage-config)]
         (is (t/right? conf))
         (is (:name (t/from-either conf)))))))
