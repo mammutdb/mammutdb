@@ -32,11 +32,11 @@
                  [org.clojure/algo.monads "0.1.5"]
                  [org.clojure/core.match "0.2.1"]
                  [cheshire "5.3.1"]
-                 [buddy "0.1.1"]
+                 [buddy "0.2.0b1"]
                  [cats "0.1.0-SNAPSHOT" :exclusions [org.clojure/clojure]]
 
                  ;; Storage
-                 [clojure.jdbc "0.2.0b2"]
+                 [clojure.jdbc "0.2.0b3"]
                  [clojure.jdbc/clojure.jdbc-dbcp "0.2.0"]
                  [postgresql "9.3-1101.jdbc41"]
                  [stch-library/sql "0.1.1"]
