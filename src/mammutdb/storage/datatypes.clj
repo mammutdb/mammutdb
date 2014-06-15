@@ -33,6 +33,10 @@
   [id username password]
   (User. id username password))
 
+(defn map->user
+  [{:keys [id username password]}]
+  (user id username password))
+
 (defn user?
   [v]
   (instance? User v))
