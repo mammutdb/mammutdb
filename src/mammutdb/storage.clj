@@ -32,4 +32,3 @@
 
   get-user-by-username
   get-user-by-id])
-
