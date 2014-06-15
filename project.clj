@@ -34,6 +34,7 @@
                  [cheshire "5.3.1"]
                  [buddy "0.2.0b1"]
                  [cats "0.1.0-SNAPSHOT" :exclusions [org.clojure/clojure]]
+                 [potemkin "0.3.4"]
 
                  ;; Storage
                  [clojure.jdbc "0.2.0b3"]
