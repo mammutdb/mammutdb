@@ -85,7 +85,7 @@
 (defn read-secret-key
   []
   (m/mlet [cfgpath (get-configfile-path)
-           cfg     (read-secret-key cfgpath)]
+           cfg     (read-config cfgpath)]
     (if (:secret-key cfg)
       (m/return (:secret-key cfg))
       (t/left "No secretkey configured."))))

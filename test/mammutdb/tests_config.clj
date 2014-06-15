@@ -5,7 +5,6 @@
             [cats.core :as m]
             [cats.types :as t]))
 
-
 (deftest config
   (testing "Get config file path"
     (binding [config/*config-path* "test/testconfig.edn"]
