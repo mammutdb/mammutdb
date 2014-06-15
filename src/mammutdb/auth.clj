@@ -25,9 +25,9 @@
 (ns mammutdb.auth
   "Authentication functions for mammutdb."
   (:require [mammutdb.storage :as storage]
-            [mammutdb.core.monads :as m]
-            [mammutdb.core.monads.types :as t]
             [mammutdb.config :as config]
+            [cats.core :as m]
+            [cats.types :as t]
             [buddy.hashers.bcrypt :as hasher]
             [buddy.sign.jws :as jws]))
 

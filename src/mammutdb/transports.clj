@@ -2,8 +2,8 @@
   "Main interface to transport initialization."
   (:require [clojure.string :as str]
             [mammutdb.core.lifecycle :as lifecycle]
-            [mammutdb.core.monads :as m]
-            [mammutdb.core.monads.types :as t]))
+            [cats.core :as m]
+            [cats.types :as t]))
 
 (defn resolve-fn-by-name
   "Given a name, dynamicaly load function."

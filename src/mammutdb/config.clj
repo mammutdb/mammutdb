@@ -27,8 +27,8 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.reader.edn :as edn]
-            [mammutdb.core.monads :as m]
-            [mammutdb.core.monads.types :as t]))
+            [cats.core :as m]
+            [cats.types :as t]))
 
 ;; Dynamic var for configuration file path.
 ;; It just serves for testing purposes only.
