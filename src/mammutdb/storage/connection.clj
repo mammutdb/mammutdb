@@ -29,8 +29,6 @@
             [cats.types :as t]
             [mammutdb.config :as config]))
 
-
 (def ^:dynamic
-  *datasource* (delay (let [cfg (config/read-storage-config)]
-                        (pool/make-datasource-spec cfg))))
-
+  datasource (delay (let [cfg (config/read-storage-config)]
+                      (pool/make-datasource-spec cfg))))
