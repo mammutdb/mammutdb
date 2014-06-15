@@ -24,19 +24,40 @@
 
 (ns mammutdb.storage.auth
   "Authentication relates storage functions."
-  (:require [mammutdb.storage.connection :as c]
-            [jdbc.core :as j]
+  (:require [clojure.java.io :as io]
             [cats.core :as m]
-            [cats.types :as t]))
+            [cats.types :as t]
+            [jdbc.core :as j]
+            [mammutdb.storage.connection :as c]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Authentication.
+;; Private Api
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def ^:private sql-user-by-id
+  (delay (slurp (io/resource "sql/query/user-by-id.sql"))))
+
+(def ^:private sql-user-by-username
+  (delay (slurp (io/resource "sql/query/user-by-username.sql"))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Public Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn get-user-by-username
   [^String username]
-  nil)
+  (j/with-connection [conn @c/datasource]
+    (let [sql     @sql-user-by-username
+          result  (j/query-first conn [sql username])]
+      (if result
+        (j/right (map->user result))
+        (j/left (format "No user found with username: %s" username))))))
 
 (defn get-user-by-id
   [^Long id]
-  nil)
+  (j/with-connection [conn @c/datasource]
+    (let [sql     @sql-user-by-username
+          result  (j/query-first conn [sql username])]
+      (if result
+        (j/right (map->user result))
+        (j/left (format "No user found with username: %s" username))))))
