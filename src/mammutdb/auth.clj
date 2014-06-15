@@ -31,20 +31,20 @@
             [buddy.hashers.bcrypt :as hasher]
             [buddy.sign.jws :as jws]))
 
+(def secret-key (delay (config/read-secret-key)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Private Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def ^:private secret-key (delay (config/read-secret-key)))
 
 (defn- check-user-password
   "Given a user record and password candidate, check
   if password matches with stored password."
   [user password]
-  (if-let [hash (:password user)
-           ok   (hs/check-password password hash)]
-    (t/right true)
-    (t/left "Wrong password"))))
+  (let [hash (:password user)]
+    (if-let [ok (hasher/check-password password hash)]
+      (t/right true)
+      (t/left "Wrong password"))))
 
 (defn- make-access-token
   "Given a userid, return valid access token."
@@ -55,10 +55,11 @@
   "Given a token, validates it and return user id."
   [^String token]
   (m/mlet [secretkey @secret-key]
-    (if-let [data   (jws/unsign token secretkey)
-             userid (:userid data)]
-      (t/right userid)
-      (t/left "Invalid access token."))))
+    (let [data   (jws/unsign token secretkey)
+          userid (:userid data)]
+      (if userid
+        (t/right userid)
+        (t/left "Invalid access token.")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public Api
