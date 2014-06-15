@@ -1,17 +1,15 @@
 ;; Copyright (c) 2014 Andrey Antukh <niwi@niwi.be>
-;;
 ;; All rights reserved.
 ;;
 ;; Redistribution and use in source and binary forms, with or without
 ;; modification, are permitted provided that the following conditions
 ;; are met:
+;;
 ;; 1. Redistributions of source code must retain the above copyright
 ;;    notice, this list of conditions and the following disclaimer.
 ;; 2. Redistributions in binary form must reproduce the above copyright
 ;;    notice, this list of conditions and the following disclaimer in the
 ;;    documentation and/or other materials provided with the distribution.
-;; 3. The name of the author may not be used to endorse or promote products
-;;    derived from this software without specific prior written permission.
 ;;
 ;; THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
 ;; IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -24,18 +22,18 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 (defproject mammutdb "0.1.0-SNAPSHOT"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
-  :license {:name "BSD"
-            :url "http://opensource.org/licenses/BSD-3-Clause"}
+  :license {:name "BSD (2 Clause)"
+            :url "http://opensource.org/licenses/BSD-2-Clause"}
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.reader "0.8.4"]
                  [org.clojure/algo.monads "0.1.5"]
                  [org.clojure/core.match "0.2.1"]
                  [cheshire "5.3.1"]
                  [buddy "0.1.1"]
+                 [cats "0.1.0-SNAPSHOT" :exclusions [org.clojure/clojure]]
 
                  ;; Storage
                  [clojure.jdbc "0.2.0b2"]
@@ -52,4 +50,6 @@
 
   :main ^:skip-aot mammutdb.cli
   :target-path "target/%s"
-  :profiles {:uberjar {:aot :all}})
+  ;; :profiles {:uberjar {:aot :all}}
+  :injections [(use 'cats.types)
+               (use 'cats.core)])
