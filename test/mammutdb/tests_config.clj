@@ -2,8 +2,8 @@
   (:require [clojure.test :refer :all]
             [clojure.java.io :as io]
             [mammutdb.config :as config]
-            [mammutdb.core.monads :as m]
-            [mammutdb.core.monads.types :as t]))
+            [cats.core :as m]
+            [cats.types :as t]))
 
 
 (deftest config
