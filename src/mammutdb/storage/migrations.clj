@@ -24,10 +24,9 @@
 
 (ns mammutdb.storage.migrations
   "Specific migrations implementation for mammutdb."
-  (:require [jdbc.core :as j]
+  (:require [clojure.java.io :as io]
+            [jdbc.core :as j]
             [jdbc.transaction :as tx]
-            [cats.core :as m]
-            [cats.types :as t]
             [mammutdb.config :as config]
             [mammutdb.storage.connection :as c]))
 
@@ -36,60 +35,55 @@
 (defn- initialized?
   "Check if database layout is initialized or not."
   [conn]
-  (j/with-connection [conn @datasource]
-    (try
-      (j/query conn "SELECT 'public.mammutdb_migrations'::regclass")
-      true
-      (catch Exception e
-        (.printStackTrace e)
-        false))))
+  (try
+    (j/query conn "SELECT 'public.mammutdb_migrations'::regclass")
+    true
+    (catch Exception e
+      false)))
 
 (defn- migration-installed?
   [conn ^String name]
   (let [sql     ["SELECT * FROM mammutdb_migrations WHERE name = ?" name]
-        exists? (query-first conn sql)]
+        exists? (j/query-first conn sql)]
     (if exists? true false)))
 
 (defn- install-migration!
   [conn ^String name]
   (let [sql "INSERT INTO mammutdb_migrations (name) VALUES (?)"]
-    (tx/with-transaction conn
-      (j/execute-prepared! sql [name]))))
+    (j/execute-prepared! conn sql [name])))
 
-(defn- apply-migration!
-  [conn name func]
-  (tx/with-transaction conn
-    (apply func [conn])
-    (install-migration! conn name)))
+(defn- apply-migrations!
+  [conn migrations]
+  (doseq [[name func] migrations]
+    (when-not (migration-installed? conn name)
+      (println (format "==> Installing migration: %s" name))
+      (install-migration! conn name)
+      (apply func [conn]))))
 
-(defn bootstrap!
-  "Initialize migrations system and create
-  mandatory tables if them does not exists."
-  []
-  (j/with-connection [conn @datasource]
-    (when-not (initialized? conn)
-      (let [sql (slurp (io/resource "sql/schema/migrations.sql"))]
-        (tx/with-transaction conn
-          (j/execute! sql))))
-    (try
-      (tx/with-transaction conn
-        (doseq [[name func] migrations]
-          (when-not (migration-installed? conn name)
-            (println "Installing migration:" name)
-            (apply-migration! conn name func))))
-      (catch Exception e
-        (.printStackTrace e)))))
-
-(defn- migration-v1
+(defn- migrate-v1
   [conn]
   (let [sql1 (slurp (io/resource "sql/schema/v1-metadata.sql"))
         sql2 (slurp (io/resource "sql/schema/v1-users.sql"))
         sql3 (slurp (io/resource "sql/schema/v1-collections.sql"))]
     (tx/with-transaction conn
-      (j/execute! sql1)
-      (j/execute! sql2)
-      (j/execute! sql3))))
+      (j/execute! conn sql1)
+      (j/execute! conn sql2)
+      (j/execute! conn sql3))))
 
 (def ^:private
-  migrations [["v1" migration-v1]])
+  migrations [["0001" migrate-v1]])
+
+(defn bootstrap
+  "Initialize migrations system and create
+  mandatory tables if them does not exists."
+  []
+  (j/with-connection [conn @c/datasource]
+    (when-not (initialized? conn)
+      (let [sql (slurp (io/resource "sql/schema/migrations.sql"))]
+        (tx/with-transaction conn
+          (j/execute! conn sql))))
+    (tx/with-transaction conn
+      (apply-migrations! conn migrations))))
+
+
 
