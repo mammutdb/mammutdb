@@ -25,10 +25,40 @@
 (ns mammutdb.cli
   "Main entry point for command line interface of mammutdb."
   (:require [mammutdb.config :as conf]
-            [mammutdb.storage.migrations :as migrations])
+            [mammutdb.storage.migrations :as migrations]
+            [clojure.string :as str]
+            [clojure.tools.cli :refer [parse-opts]])
   (:gen-class))
 
-(defn -main
-  [configpath]
-  (alter-var-root #'conf/*config-path* (fn [_] configpath))
+(def ^:private options
+   [["-v" nil "Verbosity level"
+     :id :verbosity
+     :default 0
+     :assoc-fn (fn [m k _] (update-in m [k] inc))]
+    ["-c" "--config CONFIGFILE"
+     :id :config]
+    ["-h" "--help"]])
+
+
+(defn usage
+  [summary]
+  (str/join \newline ["Options:"
+                      summary]))
+
+(defn exit [status msg]
+  (when (string? msg)
+    (println msg))
+  (System/exit status))
+
+(defn init
+  [configfile]
+  (alter-var-root #'conf/*config-path* (fn [_] configfile))
   (migrations/bootstrap))
+
+(defn -main
+  [& args]
+  (let [{:keys [options arguments errors summary]} (parse-opts args options)]
+    (cond
+     (:help options)    (exit 0 (usage summary))
+     (:config options)  (exit 0 (init (:config options)))
+     :else              (exit 1 (usage summary)))))
