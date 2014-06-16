@@ -29,8 +29,7 @@
             :url "http://opensource.org/licenses/BSD-2-Clause"}
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.reader "0.8.4"]
-                 [org.clojure/algo.monads "0.1.5"]
-                 [org.clojure/core.match "0.2.1"]
+                 [org.clojure/tools.cli "0.3.1"]
                  [cheshire "5.3.1"]
                  [buddy "0.2.0b1"]
                  [cats "0.1.0-SNAPSHOT" :exclusions [org.clojure/clojure]]
@@ -47,8 +46,6 @@
                  [info.sunng/ring-jetty9-adapter "0.6.0" :exclusions [ring/ring-core]]
                  [ring/ring-core "1.2.2" :exclusions [javax.servlet/servlet-api]]
                  [ring/ring-servlet "1.2.2" :exclusions [javax.servlet/servlet-api]]]
-                 ;; [org.clojure/tools.namespace "0.2.4"]
-
   :main ^:skip-aot mammutdb.cli
   :target-path "target/%s"
   :injections [(use 'cats.types)
