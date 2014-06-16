@@ -1,6 +1,5 @@
 {:transport {:path "mammutdb.transports.http"
              :params {:port 9002}}
  :secret-key "sample-secret-key"
- :storage {:host "127.0.0.1"
-           :port 5432
-           :name "test"}}
+ :storage {:subprotocol "postgresql"
+           :subname "//localhost:5432/test"}}
