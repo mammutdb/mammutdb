@@ -31,4 +31,4 @@
 
 (def ^:dynamic
   datasource (delay (let [cfg (config/read-storage-config)]
-                      (pool/make-datasource-spec cfg))))
+                      (pool/make-datasource-spec (t/from-either cfg)))))
