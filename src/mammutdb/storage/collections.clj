@@ -23,8 +23,7 @@
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (ns mammutdb.storage.collections
-  (:require [mammutdb.storage.datatypes :as dt]
-            [cats.types :as t]
+  (:require [cats.types :as t]
             [cats.core :as m]
             [jdbc.core :as j])
   (:import clojure.lang.BigInt))
@@ -45,6 +44,9 @@
 (def ^:private sql-document-by-id
   (delay (slurp (io/resource "sql/query/document-by-id.sql"))))
 
+(def ^:private sql-collection-by-name
+  (delay (slurp (io/resource "sql/query/collection-by-name.sql"))))
+
 (def ^:private sql-default-collection-store
   (delay (slurp (io/resource "sql/coll-schema/default-store.sql"))))
 
@@ -52,15 +54,69 @@
   (delay (slurp (io/resource "sql/coll-schema/default-rev.sql"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Utils
+;; Types
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmacro with-exception-as-either
-  [& body]
-  `(try
-     (do ~@body)
-     (catch PSQLException e
-       (t/left {:type :exception :value e}))))
+(defprotocol CollectionType
+  (get-storage-tablename [_] "Get storage tablename for collection")
+  (get-revisions-tablename [_] "Get storage tablename for collection")
+
+;; Type that represents a collection
+(deftype Collection [name]
+  Object
+  (toString [_]
+    (with-out-str
+      (print [name])))
+
+  (equals [_ other]
+    (= name (.-name other)))
+
+  CollectionType
+  (get-storage-tablename [_]
+    (str name "_storage"))
+  (get-revisions-tablename [_]
+    (str name "_revisions")))
+
+(alter-meta! #'->Collection assoc :no-doc true :private true)
+(alter-meta! #'map->Collection assoc :no-doc true :private true)
+
+;; Type that represents a document
+(deftype Document [id rev data]
+  Object
+  (toString [_]
+    (with-out-str
+      (print [id rev])))
+
+  (equals [_ other]
+    (and (= id (.-id other))
+         (= rev (.-rev other)))))
+
+(alter-meta! #'->Document assoc :no-doc true :private true)
+(alter-meta! #'map->Document assoc :no-doc true :private true)
+
+(defn ->collection
+  "Default constructor for collection type."
+  [name]
+  (Collection. name)
+
+(defn ->document
+  "Default constructor for document type."
+  [id rev data]
+  (Document. id rev data))
+
+(defn record->document
+  [{:keys [id revision data] :as record}]
+  (->document id revision data))
+
+(defn document->record
+  [doc]
+  {:id (.-id doc)
+   :revision (.-rev doc)
+   :data (.-data doc)})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Utils
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro with-either
   "Util macro for exception susceptible code blocks."
@@ -99,50 +155,41 @@
         (m/return name)
         (t/left {:type :fail :value :collection-does-not-exists})))))
 
-(defn make-storage-tablename
-  [name]
-  (-> (str name "_storage")
-      (t/right)))
-
-(defn make-revisions-tablename
-  [name]
-  (-> (str name "_revisions")
-      (t/right)))
-
-(defn record->document
-  [{:keys [id revision data] :as record}]
-  (dt/document id revision data))
-
-(defn document->record
-  [doc]
-  {:id (.-id doc)
-   :revision (.-rev doc)
-   :data (.-data doc)})
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SQL Constructors
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn makesql-collection-exists
+  "Build sql query for check the existence
+  of one collection by its name."
   [^String collname]
   (-> [@sql-collection-exists collname]
       (t/right)))
 
+(defn makesql-get-collection-by-name
+  "Build sql query for obtain collection by its name."
+  [^String name]
+  (-> [@sql-collection-by-name, name]
+      (t/right)))
+
 (defn makesql-create-collection-storage
-  [^String collname]
-  (->> (make-storage-tablename collname)
+  "Build create ddl sql for collection storage table".
+  [^Collection c]
+  (->> (get-storage-tablename c)
        (format @sql-default-collection-store)
        (t/right))
 
 (defn makesql-create-collection-revision
-  [^String collname]
-  (->> (make-revisions-tablename collname)
+  "Build create ddl sql for collection revisions table."
+  [^Collection c]
+  (->> (get-revisions-tablename c)
        (format @sql-default-collection-rev)
        (t/right))
 
 (defn makesql-get-document-by-id
-  [^String collname ^BigInt id]
-  (-> (->> (make-storage-tablename collname)
+  "Build sql query for obtain document by its id."
+  [^Collection c ^BigInt id]
+  (-> (->> (get-storage-tablename c)
            (format @sql-document-by-id))
       (vector id)
       (t/right))
@@ -158,7 +205,17 @@
              sql1  (makesql-create-collection-storage name)
              sql2  (makesql-create-collection-revision name)]
       (j/execute! conn sql1)
-      (j/execute! conn sql2))))
+      (j/execute! conn sql2)
+      (t/right (->collection name))
+
+(defn get-by-name
+  "Get collection by its name."
+  [conn ^String name]
+  (m/mlet [sql (makesql-get-collection-by-name name)
+           rev (wrap-either (j/query-first conn sql))]
+    (if rev
+      (t/right (->collection (:name)))
+      (t/left {:type :fail :value :collection-does-not-exists}))))
 
 (defn drop
   [conn ^String name]
@@ -173,7 +230,28 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn get-document-by-id
-  [conn ^String collname ^BigInt id]
-  (m/mlet [sql (makesql-get-document-by-id collname id)
+  [conn ^Collection c ^BigInt id]
+  (m/mlet [sql (makesql-get-document-by-id c id)
            rec (wrap-either (j/query-first conn sql))]
     (m/return (record->document rec))))
+
+(defn- persist-revision
+  [conn ^Collection c ^Document d])
+
+(defn- persist-mainstore
+  [conn ^Collection c ^Document d]
+
+(defn- update-mainstore
+  [conn ^Collection c ^Document d])
+
+(defn persist-document
+  "Persist document in a collection."
+  [conn ^Collection c ^Document d]
+  (cond
+   (nil? (.-id d))
+   (m/>>= (t/right d) (partial persist-mainstore conn c))
+
+   :else
+   (m/>>= (t/right d)
+          (partial update-mainstore conn c)
+          (partial persist-revision conn c))))
