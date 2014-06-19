@@ -40,3 +40,40 @@
 (defn user?
   [v]
   (instance? User v))
+
+;; Type that represents a collection
+(deftype Collection [name options]
+  Object
+  (toString [_]
+    (with-out-str
+      (print [name])))
+
+  (equals [_ other]
+    (= name (.-name other))))
+
+(alter-meta! #'->Collection assoc :no-doc true :private true)
+(alter-meta! #'map->Collection assoc :no-doc true :private true)
+
+;; Type that represents a document
+(deftype Document [id rev data]
+  Object
+  (toString [_]
+    (with-out-str
+      (print [id rev])))
+
+  (equals [_ other]
+    (and (= id (.-id other))
+         (= rev (.-rev other)))))
+
+(alter-meta! #'->Document assoc :no-doc true :private true)
+(alter-meta! #'map->Document assoc :no-doc true :private true)
+
+(defn collection
+  "Default constructor for collection type."
+  [name options]
+  (Collection. name options)
+
+(defn document
+  "Default constructor for document type."
+  [id rev data]
+  (Document. id rev data))

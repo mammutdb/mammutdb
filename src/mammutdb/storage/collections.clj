@@ -23,10 +23,11 @@
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (ns mammutdb.storage.collections
-  (:require [cats.types :as t]
+  (:require [mammutdb.storage.datatypes :as dt]
+            [cats.types :as t]
             [cats.core :as m]
             [jdbc.core :as j])
-
+  (:import clojure.lang.BigInt))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -35,11 +36,14 @@
 (def ^:dynamic *collection-safe-rx* #"[\w\_\-]+")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; SQL
+;; SQL Constants
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private sql-collection-exists
   (delay (slurp (io/resource "sql/query/collection-exists.sql"))))
+
+(def ^:private sql-document-by-id
+  (delay (slurp (io/resource "sql/query/document-by-id.sql"))))
 
 (def ^:private sql-default-collection-store
   (delay (slurp (io/resource "sql/coll-schema/default-store.sql"))))
@@ -58,6 +62,25 @@
      (catch PSQLException e
        (t/left {:type :exception :value e}))))
 
+(defmacro with-either
+  "Util macro for exception susceptible code blocks."
+  [& body]
+  `(try
+     (let [r# (do ~@body)]
+       (if (t/either? r#)
+         r#
+         (t/right #r)))
+     (catch PSQLException e
+       (t/left {:type :exception :value e}))))
+
+(defmacro wrap-either
+  "Util macro for exception susceptible code blocks."
+  [expression]
+  `(try
+     (t/right ~expression)
+     (catch PSQLException e
+       (t/left {:type :exception :value e}))))
+
 (defn safe-name?
   "Parse collection name and return a safe
   string or nil."
@@ -70,11 +93,59 @@
   "Check if collection with given name, are
   previously created."
   [conn name]
-  (let [sql (deref sql-collection-exists)]
-    (with-exception-as-either
-      (if-let [res (j/query-first conn [sql name])]
-        (t/just name)
+  (with-either
+    (m/mlet [psql (makesql-collection-exists name)]
+      (if-let [res (j/query-first conn psq)]
+        (m/return name)
         (t/left {:type :fail :value :collection-does-not-exists})))))
+
+(defn make-storage-tablename
+  [name]
+  (-> (str name "_storage")
+      (t/right)))
+
+(defn make-revisions-tablename
+  [name]
+  (-> (str name "_revisions")
+      (t/right)))
+
+(defn record->document
+  [{:keys [id revision data] :as record}]
+  (dt/document id revision data))
+
+(defn document->record
+  [doc]
+  {:id (.-id doc)
+   :revision (.-rev doc)
+   :data (.-data doc)})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; SQL Constructors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn makesql-collection-exists
+  [^String collname]
+  (-> [@sql-collection-exists collname]
+      (t/right)))
+
+(defn makesql-create-collection-storage
+  [^String collname]
+  (->> (make-storage-tablename collname)
+       (format @sql-default-collection-store)
+       (t/right))
+
+(defn makesql-create-collection-revision
+  [^String collname]
+  (->> (make-revisions-tablename collname)
+       (format @sql-default-collection-rev)
+       (t/right))
+
+(defn makesql-get-document-by-id
+  [^String collname ^BigInt id]
+  (-> (->> (make-storage-tablename collname)
+           (format @sql-document-by-id))
+      (vector id)
+      (t/right))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic collection crud.
@@ -82,22 +153,27 @@
 
 (defn create
   [conn ^String name]
-  (m/mlet [safe? (safe-name? name)
-           :let [storage-tablename   (str name "_storage")
-                 revisions-tablename (str name "_revisions")]]
-    (let [sql1 (format @sql-default-collection-store storage-tablename)
-          sql2 (format @sql-default-collection-rev revisions-tablename)]
-      (with-exception-as-either
-        (j/execute! conn sql1)
-        (j/execute! conn sql2)
-        (j/right true)))))
+  (with-either
+    (m/mlet [safe? (safe-name? name)
+             sql1  (makesql-create-collection-storage name)
+             sql2  (makesql-create-collection-revision name)]
+      (j/execute! conn sql1)
+      (j/execute! conn sql2))))
 
 (defn drop
   [conn ^String name]
-  (let [storage-tablename   (str name "_storage")
-        revisions-tablename (str name "_revisions")]
-    (with-exception-as-either
-      (j/execute! conn (format "DROP TABLE %s;" revisions-tablename))
-      (j/execute! conn (format "DROP TABLE %s;" storage-tablename))
-      (j/right true))))
+  (with-either
+    (m/mlet [tablename-storage (make-storage-tablename name)
+             tablename-rev     (make-revisions-tablename name)]
+      (j/execute! conn (format "DROP TABLE %s;" tablename-rev))
+      (j/execute! conn (format "DROP TABLE %s;" tablename-storage)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Documents crud
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn get-document-by-id
+  [conn ^String collname ^BigInt id]
+  (m/mlet [sql (makesql-get-document-by-id collname id)
+           rec (wrap-either (j/query-first conn sql))]
+    (m/return (record->document rec))))
