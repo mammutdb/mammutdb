@@ -39,7 +39,6 @@
      :id :config]
     ["-h" "--help"]])
 
-
 (defn usage
   [summary]
   (str/join \newline ["Options:"

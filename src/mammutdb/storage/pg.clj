@@ -44,12 +44,6 @@
 ;; Utils
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn is-safe-collection-name?
-  "Parse collection name and return a safe
-string or nil."
-  [name]
-  (boolean (re-matches *collection-safe-rx* name)))
-
 (defn collection-name->tablename
   "Given a type and collection name, return
 a corresponding table name for these type."
@@ -65,12 +59,6 @@ a corresponding table name for these type."
     (-> (:data record)
         (assoc :_id id :_rev rev))))
 
-(defmacro with-possible-exception
-  [& body]
-  `(try
-     (do ~@body)
-     (catch PSQLException e
-       ((maybe/fail {:type :exception :value e})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Implementation
@@ -103,19 +91,6 @@ a corresponding table name for these type."
     (-> (j/query conn [sql "mammutdb_metadata"])
         (first))))
 
-(defn collection-exists?
-  "Check if collection with given name, are
-previously created."
-  [conn collection]
-  (let [sql (str "SELECT EXISTS( "
-                 "  SELECT * FROM mammutdb_collections "
-                 "  WHERE name = ? "
-                 ");")]
-    (with-possible-exception
-      (let [res (first (j/query conn [sql name]))]
-        (if res
-          (maybe/ok collection)
-          (maybe/fail {:type :fail :value :collection-does-not-exists}))))))
 
 (defn create-collection
   "Given a name, create and register new collection."
