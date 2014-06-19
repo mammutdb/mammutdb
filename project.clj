@@ -34,6 +34,7 @@
                  [buddy "0.2.0b1"]
                  [cats "0.1.0-SNAPSHOT" :exclusions [org.clojure/clojure]]
                  [potemkin "0.3.4"]
+                 [prismatic/schema "0.2.4"]
 
                  ;; Storage
                  [clojure.jdbc "0.2.0b3"]
