@@ -22,7 +22,7 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.storage.auth
+(ns mammutdb.storage.users
   "Authentication relates storage functions."
   (:require [clojure.java.io :as io]
             [cats.core :as m]
@@ -39,6 +39,44 @@
 
 (def ^:private sql-user-by-username
   (delay (slurp (io/resource "sql/query/user-by-username.sql"))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Types
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype User [id username password token]
+  Object
+  (equals [_ other]
+    (= id (.-id other)))
+
+  (toString [_]
+    (with-out-str
+      (print [id username]))))
+
+(alter-meta! #'->User assoc :no-doc true :private true)
+(alter-meta! #'map->User assoc :no-doc true :private true)
+
+(defn is-user?
+  [v]
+  (instance? User v))
+
+(defn ->user
+  "Default user constructor."
+  ([^User user token]
+     (assert (is-user? user))
+     (User. (.-id user)
+            (.-username user)
+            (.-password user)
+            token))
+  ([^Long id ^String username ^String password]
+     (User. id username password nil))
+  ([^Long id ^String username ^String password ^String token]
+     (User. id username password token)))
+
+(defn map->user
+  [{:keys [id username password]}]
+  (->user id username password))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public Api
