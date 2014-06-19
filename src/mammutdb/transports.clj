@@ -39,7 +39,7 @@
       (catch Exception e
         (t/left (str e))))))
 
-(def load-transport
+(defn load-transport
   [conf]
   (if-let [path (:path conf)]
     (m/<*> (resolve-fn-by-name path) conf)
