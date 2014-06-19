@@ -24,7 +24,7 @@
 
 (ns mammutdb.auth
   "Authentication functions for mammutdb."
-  (:require [mammutdb.storage :as storage]
+  (:require [mammutdb.storage.users :as users]
             [mammutdb.config :as config]
             [cats.core :as m]
             [cats.types :as t]
@@ -69,14 +69,14 @@
   "Given user credentials, authenticate them and return
   user record with access token."
   [^String username  ^String password]
-  (m/mlet [user  (storage/get-user-by-username username)
+  (m/mlet [user  (users/get-user-by-username username)
            ok    (check-user-password user password)
            token (make-access-token (:id user))]
-    (m/return (assoc user :token token))))
+    (m/return (users/->user user token))))
 
 (defn authenticate-token
   "Given a token, return a user record for it or fail."
   [^String token]
   (m/mlet [userid (validate-access-token token)
-           user   (storage/get-user-by-id userid)]
+           user   (users/get-user-by-id userid)]
     (m/return user)))
