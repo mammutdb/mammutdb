@@ -22,7 +22,7 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.core.types.json
+(ns mammutdb.storage.json
   "PostgreSQL compatible json object type."
   (:require [cheshire.core :as json]
             [jdbc.types :as jdbc-types)
