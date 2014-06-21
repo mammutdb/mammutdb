@@ -48,10 +48,10 @@
   (delay (slurp (io/resource "sql/query/collection-by-name.sql"))))
 
 (def ^:private sql-default-collection-store
-  (delay (slurp (io/resource "sql/coll-schema/default-store.sql"))))
+  (delay (slurp (io/resource "sql/ops/create-default-schema-store.sql"))))
 
 (def ^:private sql-default-collection-rev
-  (delay (slurp (io/resource "sql/coll-schema/default-rev.sql"))))
+  (delay (slurp (io/resource "sql/ops/create-default-schema-rev.sql"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Types
@@ -240,6 +240,7 @@
 
 (defn- persist-mainstore
   [conn ^Collection c ^Document d]
+
 
 (defn- update-mainstore
   [conn ^Collection c ^Document d])
