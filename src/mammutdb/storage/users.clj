@@ -28,18 +28,15 @@
             [cats.core :as m]
             [cats.types :as t]
             [jdbc.core :as j]
+            [mammutdb.core.edn :as edn]
             [mammutdb.storage.connection :as c]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Private Api
+;; SQL Readers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private sql-user-by-id
-  (delay (slurp (io/resource "sql/query/user-by-id.sql"))))
-
-(def ^:private sql-user-by-username
-  (delay (slurp (io/resource "sql/query/user-by-username.sql"))))
-
+(def ^:private sql-queries
+  (delay (edn/from-resource "sql/query.edn")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Types
@@ -85,7 +82,7 @@
 (defn get-user-by-username
   [^String username]
   (j/with-connection [conn @c/datasource]
-    (let [sql     @sql-user-by-username
+    (let [sql     (:user-by-username @sql-queries)
           result  (j/query-first conn [sql username])]
       (if result
         (j/right (map->user result))
@@ -94,7 +91,7 @@
 (defn get-user-by-id
   [^Long id]
   (j/with-connection [conn @c/datasource]
-    (let [sql     @sql-user-by-username
+    (let [sql     (:user-by-id @sql-queries)
           result  (j/query-first conn [sql username])]
       (if result
         (j/right (map->user result))
