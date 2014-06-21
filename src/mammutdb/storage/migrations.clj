@@ -78,7 +78,9 @@
   []
   (with-open [conn (j/make-connection @c/datasource)]
     (when-not (initialized? conn)
-      (let [sql (slurp (io/resource "sql/schema/migrations.sql"))]
+      (let [sql (-> (edn/from-resource "sql/migrations.edn")
+                    (:initial)
+                    (:create-migrations-table))]
         (tx/with-transaction conn
           (j/execute! conn sql))))
     (tx/with-transaction conn

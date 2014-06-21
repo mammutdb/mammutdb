@@ -27,6 +27,7 @@
   (:require [mammutdb.config :as conf]
             [mammutdb.storage.migrations :as migrations]
             [clojure.string :as str]
+            [clojure.java.io :as io]
             [clojure.tools.cli :refer [parse-opts]])
   (:gen-class))
 
@@ -41,8 +42,7 @@
 
 (defn usage
   [summary]
-  (str/join \newline ["Options:"
-                      summary]))
+  (str/join \newline ["Options:" summary]))
 
 (defn exit [status msg]
   (when (string? msg)
@@ -50,9 +50,13 @@
   (System/exit status))
 
 (defn init
-  [configfile]
-  (alter-var-root #'conf/*config-path* (fn [_] configfile))
-  (migrations/bootstrap))
+  [^String configpath]
+  (let [f (io/as-file configpath)]
+    (when-not (.exists f)
+      (exit 1 (format "Specified file '%s' not found" configpath)))
+
+    (swap! conf/*config-path* (fn [_] configpath))
+    (migrations/bootstrap)))
 
 (defn -main
   [& args]

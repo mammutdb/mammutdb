@@ -1,4 +1,10 @@
-{:v1 {:collections-create-table
+{:initial {:create-migrations-table
+           "CREATE TABLE mammutdb_migrations (
+              name varchar(255) UNIQUE PRIMARY KEY,
+              created_at timestamp with time zone DEFAULT now()
+            );"}
+
+ :v1 {:collections-create-table
       "CREATE TABLE mammutdb_collections (
          name varchar(1024) UNIQUE PRIMARY KEY,
          metadata json DEFAULT '{}'::json,
