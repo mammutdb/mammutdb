@@ -25,7 +25,10 @@
 (ns mammutdb.storage.collections
   (:require [cats.types :as t]
             [cats.core :as m]
-            [jdbc.core :as j])
+            [jdbc.core :as j]
+            [mammutdb.core.edn :as edn]
+            [mammutdb.storage.json :as json])
+
   (:import clojure.lang.BigInt))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35,30 +38,21 @@
 (def ^:dynamic *collection-safe-rx* #"[\w\_\-]+")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; SQL Constants
+;; SQL Readers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private sql-collection-exists
-  (delay (slurp (io/resource "sql/query/collection-exists.sql"))))
+(def ^:private sql-ops
+  (delay (edn/from-resource "sql/ops.edn")))
 
-(def ^:private sql-document-by-id
-  (delay (slurp (io/resource "sql/query/document-by-id.sql"))))
-
-(def ^:private sql-collection-by-name
-  (delay (slurp (io/resource "sql/query/collection-by-name.sql"))))
-
-(def ^:private sql-default-collection-store
-  (delay (slurp (io/resource "sql/ops/create-default-schema-store.sql"))))
-
-(def ^:private sql-default-collection-rev
-  (delay (slurp (io/resource "sql/ops/create-default-schema-rev.sql"))))
+(def ^:private sql-queries
+  (delay (edn/from-resource "sql/query.edn")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Types
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol CollectionType
-  (get-storage-tablename [_] "Get storage tablename for collection")
+  (get-mainstore-tablename [_] "Get storage tablename for collection")
   (get-revisions-tablename [_] "Get storage tablename for collection")
 
 ;; Type that represents a collection
@@ -72,7 +66,7 @@
     (= name (.-name other)))
 
   CollectionType
-  (get-storage-tablename [_]
+  (get-mainstore-tablename [_]
     (str name "_storage"))
   (get-revisions-tablename [_]
     (str name "_revisions")))
@@ -81,7 +75,7 @@
 (alter-meta! #'map->Collection assoc :no-doc true :private true)
 
 ;; Type that represents a document
-(deftype Document [id rev data]
+(deftype Document [id rev data createdat]
   Object
   (toString [_]
     (with-out-str
@@ -101,8 +95,10 @@
 
 (defn ->document
   "Default constructor for document type."
-  [id rev data]
-  (Document. id rev data))
+  ([data]
+     (Document. nil nil data nil))
+  ([id rev data created-at]
+     (Document. id rev data created-at)))
 
 (defn record->document
   [{:keys [id revision data] :as record}]
@@ -163,36 +159,61 @@
   "Build sql query for check the existence
   of one collection by its name."
   [^String collname]
-  (-> [@sql-collection-exists collname]
+  (-> [(:collection-exists @sql-queries) collname]
       (t/right)))
 
 (defn makesql-get-collection-by-name
   "Build sql query for obtain collection by its name."
   [^String name]
-  (-> [@sql-collection-by-name, name]
+  (-> [(:collection-by-name @sql-queries) name]
       (t/right)))
 
-(defn makesql-create-collection-storage
+(defn makesql-create-collection-mainstore
   "Build create ddl sql for collection storage table".
   [^Collection c]
-  (->> (get-storage-tablename c)
-       (format @sql-default-collection-store)
+  (->> (get-mainstore-tablename c)
+       (format (:create-default-schema-mainstore @sql-ops))
        (t/right))
 
 (defn makesql-create-collection-revision
   "Build create ddl sql for collection revisions table."
   [^Collection c]
   (->> (get-revisions-tablename c)
-       (format @sql-default-collection-rev)
+       (format (:create-default-schema-revision @sql-ops))
        (t/right))
 
 (defn makesql-get-document-by-id
   "Build sql query for obtain document by its id."
   [^Collection c ^BigInt id]
-  (-> (->> (get-storage-tablename c)
-           (format @sql-document-by-id))
+  (-> (->> (get-mainstore-tablename c)
+           (format (:document-by-id @sql-queries)))
       (vector id)
       (t/right))
+
+
+(defn makesql-persist-document-on-mainstore
+  [^Collection c ^Document d]
+  (-> (->> (get-mainstore-tablename c)
+           (format (:persist-document-on-mainstore @sql-ops)))
+      (vector (.-id d) (data (.-data d)) (.-rev d) (.-createdat d))
+      (t/right)))
+
+(defn makesql-persist-document-on-revisions
+  [^Collection c data t]
+  (-> (->> (get-revisions-tablename c)
+           (format (:persist-document-on-revisions @sql-ops)))
+      ;; TODO: convert to t to Date
+      (vector (json/from-native data) t)
+      (t/right)))
+
+(defn makesql-update-document-on-mainstore
+  [^Collection c ^Document d]
+  (-> (->> (get-mainstore-tablename c)
+           (format (:update-document-on-mainstore @sql-ops)))
+      ;; TODO: convert to t to Date
+      (vector (.-rev d) (.-createdat d) (json/from-native (.-data)) (.-id d))
+      (t/right)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic collection crud.
@@ -235,24 +256,28 @@
            rec (wrap-either (j/query-first conn sql))]
     (m/return (record->document rec))))
 
-(defn- persist-revision
-  [conn ^Collection c ^Document d])
+(defn- persist-to-revisions
+  [conn ^Collection c ^Document d t]
+  (m/mlet [sql (makesql-persist-document-on-revisions c (.-data d) t)
+           res (wrap-either
+                (j/execute-prepared! sql {:returning [:id :revision]}))]
+    (let [res (first res)]
+      (m/return (->document (:id res) (:revision res) (.-data d) t)))
 
-(defn- persist-mainstore
-  [conn ^Collection c ^Document d]
-
-
-(defn- update-mainstore
-  [conn ^Collection c ^Document d])
+(defn- persist-to-mainstore
+  [conn ^Collection c t uptate? ^Document d]
+  (m/mlet [sql  (if update?
+                  (makesql-update-document-on-mainstore c d)
+                  (makesql-persist-document-on-revisions c d))
+           res  (wrap-either
+                 (j/execute-prepared! conn sql))]
+    (m/return d)))
 
 (defn persist-document
   "Persist document in a collection."
   [conn ^Collection c ^Document d]
-  (cond
-   (nil? (.-id d))
-   (m/>>= (t/right d) (partial persist-mainstore conn c))
-
-   :else
-   (m/>>= (t/right d)
-          (partial update-mainstore conn c)
-          (partial persist-revision conn c))))
+  (let [timestamp (jt/now)
+        forupdate (not (nil? (.-id d)))]
+    (m/>>= (t/right d)
+           (partial persist-revision conn c timestamp)
+           (partial persist-mainstore conn c timestamp forupdate))))

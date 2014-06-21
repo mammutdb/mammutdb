@@ -62,13 +62,11 @@
 
 (defn- migrate-v1
   [conn]
-  (let [sql1 (slurp (io/resource "sql/schema/v1-metadata.sql"))
-        sql2 (slurp (io/resource "sql/schema/v1-users.sql"))
-        sql3 (slurp (io/resource "sql/schema/v1-collections.sql"))]
+  (let [sqldata (-> (edn/from-resource "sql/migrations.edn") (:v1))]
     (tx/with-transaction conn
-      (j/execute! conn sql1)
-      (j/execute! conn sql2)
-      (j/execute! conn sql3))))
+      (j/execute! conn (:collections-create-table sqldata))
+      (j/execute! conn (:metadata-create-table sqldata))
+      (j/execute! conn (:users-create-table sqldata)))))
 
 (def ^:private
   migrations [["0001" migrate-v1]])
