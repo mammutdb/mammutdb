@@ -1,0 +1,23 @@
+{:v1 {:collections-create-table
+      "CREATE TABLE mammutdb_collections (
+         name varchar(1024) UNIQUE PRIMARY KEY,
+         metadata json DEFAULT '{}'::json,
+         created_at timestamp with time zone DEFAULT now()
+       );"
+
+      :metadata-create-table
+      "CREATE TABLE mammutdb_metadata (
+         type varchar(255) UNIQUE PRIMARY KEY,
+         value json DEFAULT '{}'::json
+       );"
+
+      :users-create-table
+      "CREATE TABLE mammutdb_users (
+         id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
+         username varchar(255) UNIQUE,
+         password varchar(255) DEFAULT '!',
+         role varchar(255) default 'user'
+       );"}}
+
+
+

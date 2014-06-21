@@ -1,0 +1,21 @@
+{:create-default-schema-revision
+ "CREATE TABLE %s (
+    id uuid UNIQUE PRIMARY KEY,
+    data json,
+    revision json,
+    created_at timestamp with time zone
+  );"
+
+ :create-default-schema-mainstore
+ "CREATE TABLE %s (
+    id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
+    data json DEFAULT '{}'::json,
+    revision uuid DEFAULT uuid_generate_v1(),
+    created_at timestamp with time zone
+  );"
+
+ :persist-collection-mainstore
+ "INSERT INTO %s (data) VALUES (?);"
+
+ :persist-collection-revision
+ "INSERT INTO %s (id data revision created_at) VALUES (?, ?, ?, ?);"}

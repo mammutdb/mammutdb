@@ -1,0 +1,14 @@
+{:collection-by-name
+ "SELECT * FROM mammutdb_collections WHERE name = ?;"
+
+ :document-by-id
+ "SELECT * FROM %s WHERE id = ?;"
+
+ :collection-exists
+ "SELECT EXISTS(SELECT * FROM mammutdb_collections WHERE name = ?);"
+
+ :user-by-id
+ "SELECT id, username, password FROM mammutdb_user WHERE id = ?;"
+
+ :user-by-username
+ "SELECT id, username, password FROM mammutdb_user WHERE username = ?;"}
