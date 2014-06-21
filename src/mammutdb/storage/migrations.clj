@@ -28,6 +28,7 @@
             [jdbc.core :as j]
             [jdbc.transaction :as tx]
             [mammutdb.config :as config]
+            [mammutdb.core.edn :as edn]
             [mammutdb.storage.connection :as c]))
 
 (declare migrations)
@@ -75,7 +76,7 @@
   "Initialize migrations system and create
   mandatory tables if them does not exists."
   []
-  (j/with-connection [conn @c/datasource]
+  (with-open [conn (j/make-connection @c/datasource)]
     (when-not (initialized? conn)
       (let [sql (slurp (io/resource "sql/schema/migrations.sql"))]
         (tx/with-transaction conn

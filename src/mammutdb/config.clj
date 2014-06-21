@@ -32,7 +32,7 @@
 
 ;; Dynamic var for configuration file path.
 ;; It just serves for testing purposes only.
-(def ^:dynamic *config-path* nil)
+(def ^:dynamic *config-path* (atom nil))
 
 (defn- keywordize [s]
   (-> (str/lower-case s)
@@ -51,7 +51,7 @@
   "Get configuration file path."
   []
   (m/mlet [props (read-system-properties)]
-    (if-let [path (:mammutdb.cfg props *config-path*)]
+    (if-let [path (:mammutdb.cfg props @*config-path*)]
       (t/right path)
       (t/left "Configuration file not specified."))))
 

@@ -7,7 +7,7 @@
 
 (deftest config
   (testing "Get config file path"
-    (binding [config/*config-path* "test/testconfig.edn"]
+    (binding [config/*config-path* (atom "test/testconfig.edn")]
       (let [configpath (config/get-configfile-path)]
         (is (= (t/right "test/testconfig.edn") configpath)))))
 
@@ -19,13 +19,13 @@
         (is (:storage v)))))
 
   (testing "Read transports config"
-    (binding [config/*config-path* "test/testconfig.edn"]
+    (binding [config/*config-path* (atom "test/testconfig.edn")]
       (let [conf (config/read-transport-config)]
         (is (t/right? conf))
         (is (:path (t/from-either conf))))))
 
   (testing "Read transports config"
-    (binding [config/*config-path* "test/testconfig.edn"]
+    (binding [config/*config-path* (atom "test/testconfig.edn")]
       (let [conf (config/read-storage-config)]
         (is (t/right? conf))
         (is (:subname (t/from-either conf)))))))

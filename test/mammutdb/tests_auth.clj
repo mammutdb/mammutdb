@@ -12,7 +12,7 @@
 (def password (hasher/make-password "secret"))
 
 (deftest auth
-  (binding [config/*config-path* "test/testconfig.edn"]
+  (binding [config/*config-path* (atom "test/testconfig.edn")]
     (testing "Authenticate credentials"
       (with-redefs [users/get-user-by-username
                     (fn [username]
