@@ -28,4 +28,4 @@
     (binding [config/*config-path* "test/testconfig.edn"]
       (let [conf (config/read-storage-config)]
         (is (t/right? conf))
-        (is (:name (t/from-either conf)))))))
+        (is (:subname (t/from-either conf)))))))

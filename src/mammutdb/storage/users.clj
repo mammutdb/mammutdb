@@ -52,16 +52,15 @@
       (print [id username]))))
 
 (alter-meta! #'->User assoc :no-doc true :private true)
-(alter-meta! #'map->User assoc :no-doc true :private true)
 
-(defn is-user?
+(defn user?
   [v]
   (instance? User v))
 
 (defn ->user
   "Default user constructor."
   ([^User user token]
-     (assert (is-user? user))
+     (assert (user? user))
      (User. (.-id user)
             (.-username user)
             (.-password user)
@@ -85,14 +84,14 @@
     (let [sql     (:user-by-username @sql-queries)
           result  (j/query-first conn [sql username])]
       (if result
-        (j/right (map->user result))
-        (j/left (format "No user found with username: %s" username))))))
+        (t/right (map->user result))
+        (t/left (format "No user found with username: %s" username))))))
 
 (defn get-user-by-id
   [^Long id]
   (j/with-connection [conn @c/datasource]
     (let [sql     (:user-by-id @sql-queries)
-          result  (j/query-first conn [sql username])]
+          result  (j/query-first conn [sql id])]
       (if result
-        (j/right (map->user result))
-        (j/left (format "No user found with username: %s" username))))))
+        (t/right (map->user result))
+        (t/left (format "No user found with id: %s" id))))))

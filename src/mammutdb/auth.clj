@@ -41,7 +41,7 @@
   "Given a user record and password candidate, check
   if password matches with stored password."
   [user password]
-  (let [hash (:password user)]
+  (let [hash (.-password user)]
     (if-let [ok (hasher/check-password password hash)]
       (t/right true)
       (t/left "Wrong password"))))
@@ -68,10 +68,10 @@
 (defn authenticate-credentials
   "Given user credentials, authenticate them and return
   user record with access token."
-  [^String username  ^String password]
+  [^String username ^String password]
   (m/mlet [user  (users/get-user-by-username username)
            ok    (check-user-password user password)
-           token (make-access-token (:id user))]
+           token (make-access-token (.-id user))]
     (m/return (users/->user user token))))
 
 (defn authenticate-token
