@@ -93,7 +93,11 @@
 (defn setup-config
   [path]
   (let [f (io/as-file path)]
-    (when-not (.exists f)
-      (exit 1 (format "Specified file '%s' not found" path)))
-    (swap! *config-path* (fn [_] path))))
+    (if-not (.exists f)
+      (let [msg (format "Specified file '%s' not found" path)]
+        (t/left {:type :fail :value msg}))
+      (do
+        (reset! *config-path* path)
+        (t/right)))))
+
 
