@@ -50,13 +50,9 @@
   (System/exit status))
 
 (defn init
-  [^String configpath]
-  (let [f (io/as-file configpath)]
-    (when-not (.exists f)
-      (exit 1 (format "Specified file '%s' not found" configpath)))
-
-    (swap! conf/*config-path* (fn [_] configpath))
-    (migrations/bootstrap)))
+  [path]
+  (conf/setup-config path)
+  (migrations/bootstrap)))
 
 (defn -main
   [& args]
