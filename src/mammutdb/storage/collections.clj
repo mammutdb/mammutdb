@@ -27,6 +27,7 @@
             [cats.core :as m]
             [jdbc.core :as j]
             [mammutdb.core.edn :as edn]
+            [mammutdb.core.error :as err]
             [mammutdb.storage.json :as json])
 
   (:import clojure.lang.BigInt))
@@ -72,7 +73,6 @@
     (str name "_revisions")))
 
 (alter-meta! #'->Collection assoc :no-doc true :private true)
-(alter-meta! #'map->Collection assoc :no-doc true :private true)
 
 ;; Type that represents a document
 (deftype Document [id rev data createdat]
@@ -86,7 +86,6 @@
          (= rev (.-rev other)))))
 
 (alter-meta! #'->Document assoc :no-doc true :private true)
-(alter-meta! #'map->Document assoc :no-doc true :private true)
 
 (defn ->collection
   "Default constructor for collection type."
@@ -114,42 +113,23 @@
 ;; Utils
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmacro with-either
-  "Util macro for exception susceptible code blocks."
-  [& body]
-  `(try
-     (let [r# (do ~@body)]
-       (if (t/either? r#)
-         r#
-         (t/right #r)))
-     (catch PSQLException e
-       (t/left {:type :exception :value e}))))
-
-(defmacro wrap-either
-  "Util macro for exception susceptible code blocks."
-  [expression]
-  `(try
-     (t/right ~expression)
-     (catch PSQLException e
-       (t/left {:type :exception :value e}))))
-
 (defn safe-name?
   "Parse collection name and return a safe
   string or nil."
   [name]
   (if (re-matches *collection-safe-rx* name)
-    (t/just true)
-    (t/left {:type :fail :value "Collection name is unsafe."})))
+    (t/right true)
+    (err/error :400 "Collection name is unsafe")
 
 (defn exists?
   "Check if collection with given name, are
   previously created."
   [conn name]
-  (with-either
+  (err/catch-to-either
     (m/mlet [psql (makesql-collection-exists name)]
       (if-let [res (j/query-first conn psq)]
         (m/return name)
-        (t/left {:type :fail :value :collection-does-not-exists})))))
+        (err/error :404 (format "Collection '%s' does not exists" name))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SQL Constructors
@@ -190,7 +170,6 @@
       (vector id)
       (t/right))
 
-
 (defn makesql-persist-document-on-mainstore
   [^Collection c ^Document d]
   (-> (->> (get-mainstore-tablename c)
@@ -214,37 +193,38 @@
       (vector (.-rev d) (.-createdat d) (json/from-native (.-data)) (.-id d))
       (t/right)))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic collection crud.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn create
   [conn ^String name]
-  (with-either
-    (m/mlet [safe? (safe-name? name)
-             sql1  (makesql-create-collection-storage name)
-             sql2  (makesql-create-collection-revision name)]
-      (j/execute! conn sql1)
-      (j/execute! conn sql2)
-      (t/right (->collection name))
+  (err/catch-to-either
+   (m/mlet [safe? (safe-name? name)
+            sql1  (makesql-create-collection-storage name)
+            sql2  (makesql-create-collection-revision name)]
+     (j/execute! conn sql1)
+     (j/execute! conn sql2)
+     (m/return (->collection name))
 
 (defn get-by-name
   "Get collection by its name."
   [conn ^String name]
-  (m/mlet [sql (makesql-get-collection-by-name name)
-           rev (wrap-either (j/query-first conn sql))]
-    (if rev
-      (t/right (->collection (:name)))
-      (t/left {:type :fail :value :collection-does-not-exists}))))
+  (err/catch-to-either
+   (m/mlet [sql (makesql-get-collection-by-name name)
+            rev (err/wrap-to-either (j/query-first conn sql))]
+     (if rev
+       (m/return (->collection (:name)))
+       (err/error :404 (format "Collection '%s' does not exists" name))))))
 
 (defn drop
   [conn ^String name]
-  (with-either
-    (m/mlet [tablename-storage (make-storage-tablename name)
-             tablename-rev     (make-revisions-tablename name)]
-      (j/execute! conn (format "DROP TABLE %s;" tablename-rev))
-      (j/execute! conn (format "DROP TABLE %s;" tablename-storage)))))
+  (err/catch-to-either
+   (m/mlet [tablename-storage (make-storage-tablename name)
+            tablename-rev     (make-revisions-tablename name)]
+     (j/execute! conn (format "DROP TABLE %s;" tablename-rev))
+     (j/execute! conn (format "DROP TABLE %s;" tablename-storage))
+     (m/return nil))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Documents crud
@@ -252,32 +232,35 @@
 
 (defn get-document-by-id
   [conn ^Collection c ^BigInt id]
-  (m/mlet [sql (makesql-get-document-by-id c id)
-           rec (wrap-either (j/query-first conn sql))]
-    (m/return (record->document rec))))
+  (err/catch-to-either
+   (m/mlet [sql (makesql-get-document-by-id c id)
+            rec (err/wrap-to-either (j/query-first conn sql))]
+     (m/return (record->document rec))))
 
 (defn- persist-to-revisions
   [conn ^Collection c ^Document d t]
   (m/mlet [sql (makesql-persist-document-on-revisions c (.-data d) t)
-           res (wrap-either
+           res (err/wrap-to-either
                 (j/execute-prepared! sql {:returning [:id :revision]}))]
     (let [res (first res)]
       (m/return (->document (:id res) (:revision res) (.-data d) t)))
 
 (defn- persist-to-mainstore
   [conn ^Collection c t uptate? ^Document d]
-  (m/mlet [sql  (if update?
+  (err/catch-to-either
+   (m/mlet [sql (if update?
                   (makesql-update-document-on-mainstore c d)
                   (makesql-persist-document-on-revisions c d))
-           res  (wrap-either
+            res (err/wrap-to-either
                  (j/execute-prepared! conn sql))]
-    (m/return d)))
+     (m/return d))))
 
 (defn persist-document
   "Persist document in a collection."
   [conn ^Collection c ^Document d]
-  (let [timestamp (jt/now)
-        forupdate (not (nil? (.-id d)))]
-    (m/>>= (t/right d)
-           (partial persist-revision conn c timestamp)
-           (partial persist-mainstore conn c timestamp forupdate))))
+  (err/catch-to-either
+   (let [timestamp (jt/now)
+         forupdate (not (nil? (.-id d)))]
+     (m/>>= (t/right d)
+            (partial persist-revision conn c timestamp)
+            (partial persist-mainstore conn c timestamp forupdate)))))
