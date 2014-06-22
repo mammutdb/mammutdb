@@ -25,6 +25,8 @@
 (ns mammutdb.cli
   "Main entry point for command line interface of mammutdb."
   (:require [mammutdb.config :as conf]
+            [mammutdb.core.util :refer [exit]]
+            [mammutdb.core.barrier :as barrier]
             [mammutdb.storage.migrations :as migrations]
             [clojure.string :as str]
             [clojure.java.io :as io]
@@ -44,19 +46,22 @@
   [summary]
   (str/join \newline ["Options:" summary]))
 
-(defn exit [status msg]
-  (when (string? msg)
-    (println msg))
-  (System/exit status))
-
 (defn init
   [path]
-  (conf/setup-config path)
-  (migrations/bootstrap)))
+  (let [cdl (barrier/count-down-latch 1)
+        ret (m/mlet [_ (conf/setup-config path)
+                     _ (migrations/bootstrap)]
+              (barrier/await cdl)
+              (t/right nil))]
+    (if (t/right? ret)
+      (exit 0, nil)
+      (exit 1, (str (t/from-either ret))))))
 
 (defn -main
   [& args]
   (let [{:keys [options arguments errors summary]} (parse-opts args options)]
+    ;; TODO: configure logging depending on verbosity
+    ;; level selected from command line.
     (cond
      (:help options)    (exit 0 (usage summary))
      (:config options)  (exit 0 (init (:config options)))
