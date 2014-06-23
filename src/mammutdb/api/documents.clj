@@ -25,19 +25,20 @@
 (ns mammutdb.api.documents
   (:require [cats.types :as t]
             [cats.core :as m]
-            [jdbc.core :as j]
+            [mammutdb.storage.connections :as conn]
             [mammutdb.storage.collections :as scoll]
             [mammutdb.storage.documents :as sdoc]
             [mammutdb.core.edn :as edn]
             [mammutdb.core.uuid :refer [str->muuid]]
             [mammutdb.core.error :as err]))
 
-
 (defn get-by-id
   "Get document by id."
   [^String collection ^String id]
-  (m/mlet [id (str->muuid id)
-           c  (scoll/get-by-name collection)
-           d  (sdoc/get-by-id c id)]
+  (m/mlet [id  (str->muuid id)
+           con (conn/new-connection)
+           c   (scoll/get-by-name con collection)
+           d   (sdoc/get-by-id con c id)
+           _   (conn/close-connection con)]
     (m/return d)))
 

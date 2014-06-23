@@ -27,8 +27,25 @@
             [jdbc.pool.dbcp :as pool]
             [cats.core :as m]
             [cats.types :as t]
-            [mammutdb.config :as config]))
+            [mammutdb.config :as config]
+            [mammutdb.core.error :as err]))
 
 (def ^:dynamic
   datasource (delay (let [cfg (config/read-storage-config)]
                       (pool/make-datasource-spec (t/from-either cfg)))))
+
+
+
+(defn new-connection
+  "Monadic function for create new connection."
+  []
+  (err/catch-to-either
+   (t/right (j/make-connection @datasource))))
+
+
+(defn close-connection
+  "Monadic close connection function."
+  [conn]
+  (err/catch-to-either
+   (.close conn)
+   (t/right true)))
