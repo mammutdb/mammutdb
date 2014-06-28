@@ -9,8 +9,6 @@
               WHERE n.nspname = 'public'
               AND c.relname = ?;"}
 
-
-
  :v1 {:collections-create-table
       "CREATE TABLE mammutdb_collections (
          name varchar(1024) UNIQUE PRIMARY KEY,
