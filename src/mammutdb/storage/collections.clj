@@ -149,30 +149,35 @@
 
 (defn create
   [conn ^String name]
-  (err/catch-to-either
+  (serr/catch-sqlexception
    (m/mlet [safe? (safe-name? name)
             :let  [c (->collection name)]
             sql1  (makesql-create-collection-mainstore c)
-            sql2  (makesql-create-collection-revision c)]
+            sql2  (makesql-create-collection-revision c)
+            sql3  (makesql-persist-collection-in-registry c)]
      (j/execute! conn sql1)
      (j/execute! conn sql2)
+     (j/execute-prepared! conn sql3)
      (m/return c))))
 
 (defn get-by-name
   "Get collection by its name."
   [conn ^String name]
-  (err/catch-to-either
+  (serr/catch-sqlexception
    (m/mlet [sql (makesql-get-collection-by-name name)
-            rev (err/wrap-to-either (j/query-first conn sql))]
+            rev (serr/wrap (j/query-first conn sql))]
      (if rev
-       (m/return (->collection (:name)))
-       (err/error :404 (format "Collection '%s' does not exists" name))))))
+       (m/return (->collection name))
+       (e/error :collection-not-exists
+                (format "Collection '%s' does not exists" name))))))
 
 (defn drop
-  [conn c]
-  (err/catch-to-either
-   (let [tablename-storage (get-mainstore-tablename c)
-         tablename-rev     (get-revisions-tablename c)]
-     (j/execute! conn (format "DROP TABLE %s;" tablename-rev))
-     (j/execute! conn (format "DROP TABLE %s;" tablename-storage))
-     (t/right))))
+  [con c]
+  (serr/catch-sqlexception
+   (m/mlet [sql (makesql-delete-collection-from-registry c)]
+     (let [tablename-storage (get-mainstore-tablename c)
+           tablename-rev     (get-revisions-tablename c)]
+       (j/execute! con (format "DROP TABLE %s;" tablename-rev))
+       (j/execute! con (format "DROP TABLE %s;" tablename-storage))
+       (j/execute-prepared! con sql)
+       (t/right)))))

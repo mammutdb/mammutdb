@@ -22,27 +22,38 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.storage.connection
-  (:require [jdbc.core :as j]
-            [jdbc.pool.dbcp :as pool]
-            [cats.core :as m]
-            [cats.types :as t]
-            [mammutdb.config :as config]
-            [mammutdb.storage.errors :as serr]))
+(ns mammutdb.core.errors
+  "Generic mammutdb error codes definition."
+  (:require [cats.types :as t]))
 
 (def ^:dynamic
-  datasource (delay (let [cfg (config/read-storage-config)]
-                      (pool/make-datasource-spec (t/from-either cfg)))))
+  *mammutdb-error-codes*
+  {:collection-exists
+   {:msg "Collection already exists"
+    :http-code :400}
 
-(defn new-connection
-  "Monadic function for create new connection."
-  []
-  (serr/catch-sqlexception
-   (t/right (j/make-connection @datasource))))
+   :collection-not-exists
+   {:msg "Collection does not exists"
+    :http-code :404}
 
-(defn close-connection
-  "Monadic close connection function."
-  [conn]
-  (serr/catch-sqlexception
-   (.close conn)
-   (t/right true)))
+   :internal-error
+   {:msg "Internal error"
+    :http-code :500}
+
+   :unexpected
+   {:msg "Unexpected error"
+    :http-code :500}
+
+   :collection-name-unsafe
+   {:msg "Collection name is unsafe."
+    :http-code :400}})
+
+(defn error
+  [code & [msg ctx]]
+  (if-let [errdata (code *mammutdb-error-codes*)]
+    (t/left {:error-code code
+             :error-ctx ctx
+             :error-msg (or msg (:msg errdata))})
+    (t/left {:error-code :unexpected
+             :error-ctx ctx
+             :error-msg (format "Error code '%s' not defined" code)})))

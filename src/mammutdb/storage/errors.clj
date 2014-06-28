@@ -25,34 +25,26 @@
 (ns mammutdb.storage.errors
   "Storage specific error management."
   (:require [clojure.java.io :as io]
+            [mammutdb.core.errors :refer [error]]
             [mammutdb.config :as config]
             [mammutdb.core.edn :as edn]
             [cats.types :as t]
             [cats.core :as m]))
 
-
-(def ^:private ^:dynamic
+(def ^{:dynamic true
+       :doc "PostgreSQL -> MammutDB error code translation map."}
   *pgsql-error-codes*
-  {:42P07 {:error-msg  "Collection already exists"
-           :error-code :collection-exists}})
-
-(defn resolve-error-code
-  [code]
-  (if-let [errordata (code *pgsql-error-codes*)]
-    errordata
-    {:error-msg "Internal error"
-     :error-code :internal-error}))
+  {:42P07  :collection-exists})
 
 (defn resolve-pgsql-error
   [e]
-  (let [state     (keyword (.getSQLState e))
-        errordata (resolve-error-code state)]
-    (-> (assoc errordata
-          :error-ctx {:sqlstate state
-                          :message (.getMessage e)})
-        (t/left))))
+  (let [state      (keyword (.getSQLState e))
+        error-code (or (state *pgsql-error-codes*) :internal-error)
+        error-ctx  {:sqlstate state
+                    :message (.getMessage e)}]
+    (error error-code nil error-ctx)))
 
-(defmacro catch-to-either
+(defmacro catch-sqlexception
   "Block style macro that catch sql exceptions and
   translates them to human readable messages."
   [& body]
@@ -64,7 +56,7 @@
      (catch java.sql.SQLException e#
        (resolve-pgsql-error e#))))
 
-(defmacro wrap-to-either
+(defmacro wrap
   "Decorator like macro that wraps one unique expression
   in a try/catch block and return left value of either type
   if any exception is raised."
@@ -76,7 +68,3 @@
          (resolve-pgsql-error e#)))
      (catch java.sql.SQLException e#
        (resolve-pgsql-error e#))))
-
-(defn error
-  [code e ]
-  (t/left {:code code :value e :type :common}))
