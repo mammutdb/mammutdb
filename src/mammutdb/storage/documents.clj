@@ -22,7 +22,7 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.storage.collections
+(ns mammutdb.storage.documents
   (:require [cats.types :as t]
             [cats.core :as m]
             [jdbc.core :as j]
@@ -85,13 +85,13 @@
   (-> (->> (scoll/get-mainstore-tablename c)
            (format (:document-by-id @sql-queries)))
       (vector id)
-      (t/right))
+      (t/right)))
 
 (defn makesql-persist-document-on-mainstore
   [c d]
   (-> (->> (scoll/get-mainstore-tablename c)
            (format (:persist-document-on-mainstore @sql-ops)))
-      (vector (.-id d) (data (.-data d)) (.-rev d) (.-createdat d))
+      (vector (.-id d) (.-data d) (.-rev d) (.-createdat d))
       (t/right)))
 
 (defn makesql-persist-document-on-revisions
@@ -107,7 +107,7 @@
   (-> (->> (scoll/get-mainstore-tablename c)
            (format (:update-document-on-mainstore @sql-ops)))
       ;; TODO: convert to t to Date
-      (vector (.-rev d) (.-createdat d) (json/from-native (.-data)) (.-id d))
+      (vector (.-rev d) (.-createdat d) (json/from-native (.-data d)) (.-id d))
       (t/right)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -119,7 +119,7 @@
   (err/catch-to-either
    (m/mlet [sql (makesql-get-document-by-id c id)
             rec (err/wrap-to-either (j/query-first conn sql))]
-     (m/return (record->document rec))))
+     (m/return (record->document rec)))))
 
 (defn- persist-to-revisions
   [conn c d t]
@@ -127,10 +127,10 @@
            res (err/wrap-to-either
                 (j/execute-prepared! sql {:returning [:id :revision]}))]
     (let [res (first res)]
-      (m/return (->document (:id res) (:revision res) (.-data d) t)))
+      (m/return (->document (:id res) (:revision res) (.-data d) t)))))
 
 (defn- persist-to-mainstore
-  [conn c t uptate? d]
+  [conn c t update? d]
   (err/catch-to-either
    (m/mlet [sql (if update?
                   (makesql-update-document-on-mainstore c d)

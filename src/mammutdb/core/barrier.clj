@@ -32,6 +32,6 @@
   [^Integer num]
   (CountDownLatch. num))
 
-(defn await
+(defn wait
   [barrier]
   (.await barrier))

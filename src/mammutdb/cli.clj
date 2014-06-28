@@ -28,6 +28,8 @@
             [mammutdb.core.util :refer [exit]]
             [mammutdb.core.barrier :as barrier]
             [mammutdb.storage.migrations :as migrations]
+            [cats.core :as m]
+            [cats.types :as t]
             [clojure.string :as str]
             [clojure.java.io :as io]
             [clojure.tools.cli :refer [parse-opts]])
@@ -51,7 +53,7 @@
   (let [cdl (barrier/count-down-latch 1)
         ret (m/mlet [_ (conf/setup-config path)
                      _ (migrations/bootstrap)]
-              (barrier/await cdl)
+              (barrier/wait cdl)
               (t/right nil))]
     (if (t/right? ret)
       (exit 0, nil)

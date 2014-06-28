@@ -29,6 +29,7 @@
             [mammutdb.core.edn :as edn]
             [mammutdb.core.error :as err]
             [mammutdb.storage.json :as json])
+  (:refer-clojure :exclude [drop])
   (:import clojure.lang.BigInt))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -53,7 +54,7 @@
 
 (defprotocol CollectionType
   (get-mainstore-tablename [_] "Get storage tablename for collection")
-  (get-revisions-tablename [_] "Get storage tablename for collection")
+  (get-revisions-tablename [_] "Get storage tablename for collection"))
 
 ;; Type that represents a collection
 (deftype Collection [name]
@@ -76,29 +77,7 @@
 (defn ->collection
   "Default constructor for collection type."
   [name]
-  (Collection. name)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Utils
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn safe-name?
-  "Parse collection name and return a safe
-  string or nil."
-  [name]
-  (if (re-matches *collection-safe-rx* name)
-    (t/right true)
-    (err/error :400 "Collection name is unsafe")
-
-(defn exists?
-  "Check if collection with given name, are
-  previously created."
-  [conn name]
-  (err/catch-to-either
-    (m/mlet [psql (makesql-collection-exists name)]
-      (if-let [res (j/query-first conn psq)]
-        (m/return name)
-        (err/error :404 (format "Collection '%s' does not exists" name))))))
+  (Collection. name))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SQL Constructors
@@ -112,24 +91,45 @@
       (t/right)))
 
 (defn makesql-get-collection-by-name
-  "Build sql query for obtain collection by its name."
   [^String name]
   (-> [(:collection-by-name @sql-queries) name]
       (t/right)))
 
 (defn makesql-create-collection-mainstore
-  "Build create ddl sql for collection storage table".
+  "Build create ddl sql for collection storage table"
   [c]
   (->> (get-mainstore-tablename c)
        (format (:create-default-schema-mainstore @sql-ops))
-       (t/right))
+       (t/right)))
 
 (defn makesql-create-collection-revision
   "Build create ddl sql for collection revisions table."
   [c]
   (->> (get-revisions-tablename c)
        (format (:create-default-schema-revision @sql-ops))
-       (t/right))
+       (t/right)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Utils
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn safe-name?
+  "Parse collection name and return a safe
+  string or nil."
+  [name]
+  (if (re-matches *collection-safe-rx* name)
+    (t/right true)
+    (err/error :400 "Collection name is unsafe")))
+
+(defn exists?
+  "Check if collection with given name, are
+  previously created."
+  [conn name]
+  (err/catch-to-either
+    (m/mlet [psql (makesql-collection-exists name)]
+      (if-let [res (j/query-first conn psql)]
+        (m/return name)
+        (err/error :404 (format "Collection '%s' does not exists" name))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic collection crud.
@@ -140,11 +140,11 @@
   (err/catch-to-either
    (m/mlet [safe? (safe-name? name)
             :let  [c (->collection name)]
-            sql1  (makesql-create-collection-storage c)
+            sql1  (makesql-create-collection-mainstore c)
             sql2  (makesql-create-collection-revision c)]
      (j/execute! conn sql1)
      (j/execute! conn sql2)
-     (m/return c)
+     (m/return c))))
 
 (defn get-by-name
   "Get collection by its name."
@@ -159,8 +159,8 @@
 (defn drop
   [conn ^String name]
   (err/catch-to-either
-   (m/mlet [tablename-storage (make-storage-tablename name)
-            tablename-rev     (make-revisions-tablename name)]
+   (m/mlet [tablename-storage (get-mainstore-tablename (->collection name))
+            tablename-rev     (get-revisions-tablename (->collection name))]
      (j/execute! conn (format "DROP TABLE %s;" tablename-rev))
      (j/execute! conn (format "DROP TABLE %s;" tablename-storage))
      (m/return nil))))
