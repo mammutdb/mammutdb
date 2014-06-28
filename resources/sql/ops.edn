@@ -10,7 +10,7 @@
  "CREATE TABLE %s (
     id uuid UNIQUE PRIMARY KEY,
     data json,
-    revision uuid;
+    revision uuid,
     created_at timestamp with time zone
   );"
 

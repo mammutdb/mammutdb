@@ -28,7 +28,7 @@
             [cats.core :as m]
             [cats.types :as t]
             [mammutdb.config :as config]
-            [mammutdb.core.error :as err]))
+            [mammutdb.storage.errors :as err]))
 
 (def ^:dynamic
   datasource (delay (let [cfg (config/read-storage-config)]

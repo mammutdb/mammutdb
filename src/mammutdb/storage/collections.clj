@@ -27,8 +27,8 @@
             [cats.core :as m]
             [jdbc.core :as j]
             [mammutdb.core.edn :as edn]
-            [mammutdb.core.error :as err]
-            [mammutdb.storage.json :as json])
+            [mammutdb.storage.json :as json]
+            [mammutdb.storage.errors :as err])
   (:refer-clojure :exclude [drop])
   (:import clojure.lang.BigInt))
 
@@ -157,10 +157,10 @@
        (err/error :404 (format "Collection '%s' does not exists" name))))))
 
 (defn drop
-  [conn ^String name]
+  [conn c]
   (err/catch-to-either
-   (m/mlet [tablename-storage (get-mainstore-tablename (->collection name))
-            tablename-rev     (get-revisions-tablename (->collection name))]
+   (let [tablename-storage (get-mainstore-tablename c)
+         tablename-rev     (get-revisions-tablename c)]
      (j/execute! conn (format "DROP TABLE %s;" tablename-rev))
      (j/execute! conn (format "DROP TABLE %s;" tablename-storage))
-     (m/return nil))))
+     (t/right))))

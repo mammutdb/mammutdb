@@ -24,6 +24,22 @@
   (testing "Not existence of one collection"
     (with-open [c (j/make-connection @sconn/datasource)]
       (is (t/left? (scoll/exists? c "notexistent")))))
+
+  (testing "Creating and existence of collection"
+    (with-open [c (j/make-connection @sconn/datasource)]
+      (let [coll (scoll/create c "testcoll")
+            data (t/from-either coll)]
+        (is (= (t/from-either coll) (scoll/->collection "testcoll"))))
+      (scoll/drop c (scoll/->collection "testcoll"))))
+
+  (testing "Created duplicate collection"
+    (with-open [c (j/make-connection @sconn/datasource)]
+      (let [coll (scoll/create c "testcoll")
+            coll (scoll/create c "testcoll")
+            data (t/from-either coll)]
+        (is (= (:error-code data) :collection-exists))
+        (is (= (-> data :error-ctx :sqlstate) :42P07)))
+      (scoll/drop c (scoll/->collection "testcoll"))))
 )
 
 
