@@ -33,14 +33,15 @@
 
 (declare migrations)
 
+(def ^:private sql-migrations
+  (delay (edn/from-resource "sql/migrations.edn")))
+
 (defn- initialized?
   "Check if database layout is initialized or not."
-  [conn]
-  (try
-    (j/query conn "SELECT 'public.mammutdb_migrations'::regclass")
-    true
-    (catch Exception e
-      false)))
+  [con]
+  (let [sql (-> @sql-migrations :initial :check-if-exists)
+        res (j/query-first con [sql "mammutdb_migrations"])]
+    (boolean res)))
 
 (defn- migration-installed?
   [conn ^String name]
@@ -63,7 +64,7 @@
 
 (defn- migrate-v1
   [conn]
-  (let [sqldata (-> (edn/from-resource "sql/migrations.edn") (:v1))]
+  (let [sqldata (:v1 @sql-migrations)]
     (tx/with-transaction conn
       (j/execute! conn (:collections-create-table sqldata))
       (j/execute! conn (:metadata-create-table sqldata))

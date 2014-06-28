@@ -2,7 +2,14 @@
            "CREATE TABLE mammutdb_migrations (
               name varchar(255) UNIQUE PRIMARY KEY,
               created_at timestamp with time zone DEFAULT now()
-            );"}
+            );"
+           :check-if-exists
+           "SELECT 1 FROM pg_catalog.pg_class c
+              JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+              WHERE n.nspname = 'public'
+              AND c.relname = ?;"}
+
+
 
  :v1 {:collections-create-table
       "CREATE TABLE mammutdb_collections (
