@@ -35,10 +35,19 @@
 (defn get-by-id
   "Get document by id."
   [^String collection ^String id]
-  (m/mlet [id  (str->muuid id)
-           con (conn/new-connection)
-           c   (scoll/get-by-name con collection)
-           d   (sdoc/get-by-id con c id)
-           _   (conn/close-connection con)]
-    (m/return d)))
+  (let [txfn (fn [con]
+               (m/mlet [id (str->muuid id)
+                        c  (scoll/get-by-name con collection)
+                        d  (sdoc/get-by-id con c id)]
+                 (m/return d)))]
+    (m/mlet [con (conn/new-connection)
+             res (stx/run-in-transaction con txfn)
+             _   (conn/close-connection con)]
+      (m/return res))))
 
+;; (defn persist
+;;   "Persist document."
+;;   [^String collection document options]
+;;   {:pre [(map? document)]}
+;;   (m/mlet [con (conn/new-connection)
+;;            c   (scoll/get-by-name con collection)
