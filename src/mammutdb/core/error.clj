@@ -58,7 +58,7 @@
 (defn error
   [code e]
   (t/left (cond
-           (exeption? e)
+           (exception? e)
            {:type :exception :value e :code code}
 
            (string? e)
