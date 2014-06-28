@@ -25,46 +25,53 @@
 (ns mammutdb.logging
   "Logging implementation for mammutdb."
   (:require [cats.types :as t]
-            [clojure.string :as str])
+            [cats.core :as m]
+            [clj-time.format :as tfmt]
+            [clj-time.core :as time])
   (:import java.util.logging.Level
            java.util.logging.Logger
            java.util.logging.ConsoleHandler
            java.util.logging.LogRecord
            java.util.logging.Formatter
-           java.util.logging.FileHandler
-           java.util.logging.SimpleFormatter))
-
+           java.util.logging.FileHandler))
 
 (def ^{:dynamic true
        :doc "Logging write queue"}
   *logger-writer* (agent 0N :error-mode :continue))
 
-(defn- configured?
-  [^Logger logger]
-  (let [handlers (.getHandlers logger)]
-    (= (count handlers) 0)))
+(defn- make-logger-formatter
+  []
+  (let [tz    (time/default-time-zone)
+        tf    (tfmt/with-zone (tfmt/formatters :date-time) tz)
+        fmtr  (proxy [Formatter] []
+                (format [^LogRecord rec]
+                  (let [now     (time/now)
+                        timestr (tfmt/unparse tf now)]
+                    (format "[%s] %s: %s" timestr (.getLevel rec) (.getMessage rec)))))]
+    (t/just fmtr)))
 
-(defn- configure-logger!
-  [logger]
-  (let [formatter (proxy [Formatter] []
-                    (format [^LogRecord rec]
-                      (str/join " " [(.getLevel rec)
-                                     (.getMessage rec)])))
-        handler   (doto (ConsoleHandler.)
-                    (.setLevel Level/ALL)
-                    (.setFormatter formatter))]
-    (doto logger
-      (.setUseParentHandlers false)
-      (.setLevel Level/ALL)
-      (.addHandler handler))))
+(defn make-logger-handler
+  [formatter]
+  (-> (doto (ConsoleHandler.)
+        (.setLevel Level/ALL)
+        (.setFormatter formatter))
+      (t/just)))
+
+(defn make-logger
+  [handler]
+  (-> (doto (Logger/getAnonymousLogger)
+        (.setUseParentHandlers false)
+        (.setLevel Level/ALL)
+        (.addHandler handler))
+      (t/just)))
 
 (def ^{:dynamic :true
        :doc "Lazzy logger constructor"}
   *logger*
-  (delay (let [logger (Logger/getLogger "mammutdb")]
-           (configure-logger! logger)
-           logger)))
-
+  (delay (-> (m/>>= (make-logger-formatter)
+                    make-logger-handler
+                    make-logger)
+             (t/from-maybe))))
 
 (defn log
   [level message & params]
@@ -76,6 +83,5 @@
                   :error (.log @*logger* Level/SEVERE message)
                   :debug (.fine @*logger* message)
                   :warn (.warning @*logger* message)))
-
               (inc v)))
   (t/right nil))
