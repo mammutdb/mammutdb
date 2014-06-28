@@ -125,11 +125,11 @@
   "Check if collection with given name, are
   previously created."
   [conn name]
-  (err/catch-to-either
-    (m/mlet [psql (makesql-collection-exists name)]
-      (if-let [res (j/query-first conn psql)]
-        (m/return name)
-        (err/error :404 (format "Collection '%s' does not exists" name))))))
+  (m/mlet [sql (makesql-collection-exists name)
+           res (err/wrap-to-either (j/query-first conn sql))]
+    (if (:exists res)
+      (m/return name)
+      (err/error :404 (format "Collection '%s' does not exists" name)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic collection crud.
