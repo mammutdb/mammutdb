@@ -27,8 +27,9 @@
             [cats.core :as m]
             [jdbc.core :as j]
             [mammutdb.core.edn :as edn]
+            [mammutdb.core.errors :as e]
             [mammutdb.storage.json :as json]
-            [mammutdb.storage.errors :as err])
+            [mammutdb.storage.errors :as serr])
   (:refer-clojure :exclude [drop])
   (:import clojure.lang.BigInt))
 
@@ -108,6 +109,16 @@
   (->> (get-revisions-tablename c)
        (format (:create-default-schema-revision @sql-ops))
        (t/right)))
+
+(defn makesql-persist-collection-in-registry
+  [c]
+  (-> [(:persist-collection @sql-ops) (.-name c)]
+      (t/right)))
+
+(defn makesql-delete-collection-from-registry
+  [c]
+  (-> [(:delete-collection @sql-ops) (.-name c)]
+      (t/right)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Utils
