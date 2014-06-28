@@ -26,6 +26,8 @@
   (:require [cats.types :as t]
             [cats.core :as m]
             [jdbc.core :as j]
+            [clj-time.core :as jt]
+            [clj-time.coerce :as jc]
             [mammutdb.core.edn :as edn]
             [mammutdb.core.error :as err]
             [mammutdb.storage.collections :as scoll]
@@ -66,8 +68,9 @@
      (Document. id rev data created-at)))
 
 (defn record->document
-  [{:keys [id revision data] :as record}]
-  (->document id revision data))
+  [{:keys [id revision data created_at] :as record}]
+  (->> (jc/from-sql-time created_at)
+       (->document id revision data)))
 
 (defn document->record
   [doc]
@@ -82,50 +85,54 @@
 (defn makesql-get-document-by-id
   "Build sql query for obtain document by its id."
   [c id]
-  (-> (->> (scoll/get-mainstore-tablename c)
-           (format (:document-by-id @sql-queries)))
-      (vector id)
-      (t/right)))
+  (let [tablename (scoll/get-mainstore-tablename c)]
+    (-> (format (:document-by-id @sql-queries) tablename)
+        (vector id)
+        (t/right))))
 
 (defn makesql-persist-document-on-mainstore
   [c d]
-  (-> (->> (scoll/get-mainstore-tablename c)
-           (format (:persist-document-on-mainstore @sql-ops)))
-      (vector (.-id d) (.-data d) (.-rev d) (.-createdat d))
-      (t/right)))
+  (let [createdat (jc/to-sql-time (.-createdat d))
+        data      (json/from-native (.-data d))
+        tablename (scoll/get-mainstore-tablename c)]
+    (-> (format (:persist-document-on-mainstore @sql-ops) tablename)
+        (vector (.-id d) data (.-rev d) createdat)
+        (t/right))))
 
 (defn makesql-persist-document-on-revisions
   [c data t]
-  (-> (->> (scoll/get-revisions-tablename c)
-           (format (:persist-document-on-revisions @sql-ops)))
-      ;; TODO: convert to t to Date
-      (vector (json/from-native data) t)
-      (t/right)))
+  (let [createdat (jc/to-sql-time t)
+        data      (json/from-native data)
+        tablename (scoll/get-revisions-tablename c)]
+    (-> (format (:persist-document-on-revisions @sql-ops) tablename)
+        (vector data createdat)
+        (t/right))))
 
 (defn makesql-update-document-on-mainstore
   [c d]
-  (-> (->> (scoll/get-mainstore-tablename c)
-           (format (:update-document-on-mainstore @sql-ops)))
-      ;; TODO: convert to t to Date
-      (vector (.-rev d) (.-createdat d) (json/from-native (.-data d)) (.-id d))
-      (t/right)))
+  (let [createdat (jc/to-sql-time (.-createdat d))
+        data      (json/from-native (.-data d))
+        tablename (scoll/get-mainstore-tablename c)]
+    (-> (format (:update-document-on-mainstore @sql-ops) tablename)
+        (vector (.-rev d) createdat data (.-id d))
+        (t/right))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Documents crud
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn get-by-id
-  [conn c id]
+  [con c id]
   (err/catch-to-either
    (m/mlet [sql (makesql-get-document-by-id c id)
-            rec (err/wrap-to-either (j/query-first conn sql))]
+            rec (err/wrap-to-either (j/query-first con sql))]
      (m/return (record->document rec)))))
 
 (defn- persist-to-revisions
-  [conn c d t]
+  [con c d t]
   (m/mlet [sql (makesql-persist-document-on-revisions c (.-data d) t)
            res (err/wrap-to-either
-                (j/execute-prepared! sql {:returning [:id :revision]}))]
+                (j/execute-prepared! con sql {:returning [:id :revision]}))]
     (let [res (first res)]
       (m/return (->document (:id res) (:revision res) (.-data d) t)))))
 
@@ -146,5 +153,5 @@
    (let [timestamp (jt/now)
          forupdate (not (nil? (.-id d)))]
      (m/>>= (t/right d)
-            (partial persist-revision conn c timestamp)
-            (partial persist-mainstore conn c timestamp forupdate)))))
+            (partial persist-to-revisions conn c timestamp)
+            (partial persist-to-mainstore conn c timestamp forupdate)))))

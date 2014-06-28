@@ -28,6 +28,7 @@
             [mammutdb.storage.connection :as conn]
             [mammutdb.storage.collections :as scoll]
             [mammutdb.storage.documents :as sdoc]
+            [mammutdb.storage.transaction :as stx]
             [mammutdb.core.edn :as edn]
             [mammutdb.core.uuid :refer [str->muuid]]
             [mammutdb.core.error :as err]))

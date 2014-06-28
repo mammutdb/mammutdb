@@ -48,7 +48,7 @@
           value (.getValue pgobj)]
       (case type
         "json" (JsonObject. value)
-        :else value))))
+        :else pgobj))))
 
 (defn from-native
   "PostgreSQL compatible json object constructor."
