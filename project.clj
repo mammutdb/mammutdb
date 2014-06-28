@@ -37,7 +37,7 @@
                  [prismatic/schema "0.2.4"]
 
                  ;; Storage
-                 [clojure.jdbc "0.2.0b3"]
+                 [clojure.jdbc "0.2.1"]
                  [clojure.jdbc/clojure.jdbc-dbcp "0.2.0"]
                  [postgresql "9.3-1101.jdbc41"]
                  [stch-library/sql "0.1.1"]
