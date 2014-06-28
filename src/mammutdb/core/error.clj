@@ -38,8 +38,8 @@
   [& body]
   `(try
      (do ~@body)
-     (catch Exception e
-       (error e))))
+     (catch Exception e#
+       (error e#))))
 
 (defmacro wrap-to-either
   "Decorator like macro that wraps one unique expression
@@ -48,8 +48,8 @@
   [expression]
   `(try
      (t/right ~expression)
-     (catch Exception e
-       (error e))))
+     (catch Exception e#
+       (error e#))))
 
 (defn exception?
   [e]
