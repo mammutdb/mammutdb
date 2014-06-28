@@ -26,7 +26,9 @@
   "Error management functions and macros"
   (:require [clojure.java.io :as io]
             [mammutdb.config :as config]
-            [mammutdb.core.edn :as edn]))
+            [mammutdb.core.edn :as edn]
+            [cats.types :as t]
+            [cats.core :as m]))
 
 (declare error)
 
