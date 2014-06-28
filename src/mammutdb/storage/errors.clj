@@ -22,24 +22,47 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.core.error
-  "Error management functions and macros"
+(ns mammutdb.storage.errors
+  "Storage specific error management."
   (:require [clojure.java.io :as io]
             [mammutdb.config :as config]
             [mammutdb.core.edn :as edn]
             [cats.types :as t]
             [cats.core :as m]))
 
-(declare error)
+
+(def ^:private ^:dynamic
+  *pgsql-error-codes*
+  {:42P07 {:error-msg  "Collection already exists"
+           :error-code :collection-exists}})
+
+(defn resolve-error-code
+  [code]
+  (if-let [errordata (code *pgsql-error-codes*)]
+    errordata
+    {:error-msg "Internal error"
+     :error-code :internal-error}))
+
+(defn resolve-pgsql-error
+  [e]
+  (let [state     (keyword (.getSQLState e))
+        errordata (resolve-error-code state)]
+    (-> (assoc errordata
+          :error-ctx {:sqlstate state
+                          :message (.getMessage e)})
+        (t/left))))
 
 (defmacro catch-to-either
-  "Block style macro that catch any exception to left value
-  of either type."
+  "Block style macro that catch sql exceptions and
+  translates them to human readable messages."
   [& body]
   `(try
      (do ~@body)
-     (catch Exception e#
-       (error e#))))
+     (catch java.sql.BatchUpdateException e#
+       (let [e# (.getNextException e#)]
+         (resolve-pgsql-error e#)))
+     (catch java.sql.SQLException e#
+       (resolve-pgsql-error e#))))
 
 (defmacro wrap-to-either
   "Decorator like macro that wraps one unique expression
@@ -48,22 +71,12 @@
   [expression]
   `(try
      (t/right ~expression)
-     (catch Exception e#
-       (error e#))))
-
-(defn exception?
-  [e]
-  (instance? Throwable e))
+     (catch java.sql.BatchUpdateException e#
+       (let [e# (.getNextException e#)]
+         (resolve-pgsql-error e#)))
+     (catch java.sql.SQLException e#
+       (resolve-pgsql-error e#))))
 
 (defn error
-  [code e]
-  (t/left (cond
-           (exception? e)
-           {:type :exception :value e :code code}
-
-           (string? e)
-           {:type :string :value e :code code}
-
-           (keyword? e)
-           {:type :keyword :value e :code code})))
-
+  [code e ]
+  (t/left {:code code :value e :type :common}))
