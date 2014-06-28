@@ -19,7 +19,15 @@
 
   (testing "Collections name safety"
     (is (t/right? (scoll/safe-name? "testcollname")))
-    (is (t/left? (scoll/safe-name? "ddd@ddd"))))
+    (let [r (scoll/safe-name? "ddd@ddd")
+          i (t/from-either r)]
+
+      (is (t/left? r))
+      (is (= (:error-code i) :collection-name-unsafe))))
+
+  ;; (testing "Not existence of one collection"
+  ;;   (with-open [c (j/make-connection @sconn/datasource)]
+  ;;     (is (t/left? (scoll/exists? c "notexistent")))))
 
   (testing "Not existence of one collection"
     (with-open [c (j/make-connection @sconn/datasource)]

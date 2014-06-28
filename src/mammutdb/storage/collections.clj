@@ -130,17 +130,18 @@
   [name]
   (if (re-matches *collection-safe-rx* name)
     (t/right true)
-    (err/error :400 "Collection name is unsafe")))
+    (e/error :collection-name-unsafe)))
 
-(defn exists?
-  "Check if collection with given name, are
-  previously created."
-  [conn name]
-  (m/mlet [sql (makesql-collection-exists name)
-           res (err/wrap-to-either (j/query-first conn sql))]
-    (if (:exists res)
-      (m/return name)
-      (err/error :404 (format "Collection '%s' does not exists" name)))))
+;; (defn exists?
+;;   "Check if collection with given name, are
+;;   previously created."
+;;   [conn name]
+;;   (m/mlet [sql (makesql-collection-exists name)
+;;            res (serr/wrap (j/query-first conn sql))]
+;;     (if (:exists res)
+;;       (m/return name)
+;;       (e/error :collection-not-exists
+;;                (format "Collection '%s' does not exists" name)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic collection crud.
