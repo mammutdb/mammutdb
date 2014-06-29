@@ -46,3 +46,36 @@
   (serr/catch-sqlexception
    (.close conn)
    (t/right true)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; State Monad Jdbc operatiosn (not used at this momment)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; (defn execute
+;;   [sql]
+;;   (-> (fn [con]
+;;         (j/execute! con sql)
+;;         (t/pair nil con))
+;;       (t/state-t)))
+
+;; (defn execute-prepared
+;;   [sql]
+;;   (-> (fn [con]
+;;         (j/execute-prepared! con sql)
+;;         (t/pair nil con))
+;;       (t/state-t)))
+
+;; (defn query
+;;   [sql]
+;;   (-> (fn [con]
+;;         (let [res (j/query con sql)]
+;;           (t/pair res con)))
+;;       (t/state-t)))
+
+;; (defn query-first
+;;   [sql]
+;;   (-> (fn [con]
+;;         (let [r (m/eval-state (query sql) con)]
+;;           (t/pair r con)))
+;;       (t/state-t)))

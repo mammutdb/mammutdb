@@ -181,3 +181,15 @@
        (j/execute! con (format "DROP TABLE %s;" tablename-storage))
        (j/execute-prepared! con sql)
        (t/right)))))
+
+
+;; (defn drop
+;;   [con c]
+;;   (m/mlet [sql  (makesql-delete-collection-from-registry c)
+;;            :let [tablename-storage (get-mainstore-tablename c)
+;;                  tablename-rev     (get-revisions-tablename c)]
+
+;;            _    (sconn/execute (format "DROP TABLE %s;" tablename-rev))
+;;            _    (sconn/execute (format "DROP TABLE %s;" tablename-storage))
+;;            _    (sconn/execute-prepared sql)]
+;;     (m/return (t/right))))
