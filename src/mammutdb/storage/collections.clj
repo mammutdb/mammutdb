@@ -149,12 +149,12 @@
 
 (defn create
   [conn ^String name]
-  (serr/catch-sqlexception
-   (m/mlet [safe? (safe-name? name)
-            :let  [c (->collection name)]
-            sql1  (makesql-create-collection-mainstore c)
-            sql2  (makesql-create-collection-revision c)
-            sql3  (makesql-persist-collection-in-registry c)]
+  (m/mlet [safe? (safe-name? name)
+           :let  [c (->collection name)]
+           sql1  (makesql-create-collection-mainstore c)
+           sql2  (makesql-create-collection-revision c)
+           sql3  (makesql-persist-collection-in-registry c)]
+    (serr/catch-sqlexception
      (j/execute! conn sql1)
      (j/execute! conn sql2)
      (j/execute-prepared! conn sql3)
@@ -163,25 +163,23 @@
 (defn get-by-name
   "Get collection by its name."
   [conn ^String name]
-  (serr/catch-sqlexception
-   (m/mlet [sql (makesql-get-collection-by-name name)
-            rev (serr/wrap (j/query-first conn sql))]
-     (if rev
-       (m/return (->collection name))
-       (e/error :collection-not-exists
-                (format "Collection '%s' does not exists" name))))))
+  (m/mlet [sql (makesql-get-collection-by-name name)
+           rev (serr/wrap (j/query-first conn sql))]
+    (if rev
+      (m/return (->collection name))
+      (e/error :collection-not-exists
+               (format "Collection '%s' does not exists" name)))))
 
 (defn drop
   [con c]
-  (serr/catch-sqlexception
-   (m/mlet [sql (makesql-delete-collection-from-registry c)]
-     (let [tablename-storage (get-mainstore-tablename c)
-           tablename-rev     (get-revisions-tablename c)]
-       (j/execute! con (format "DROP TABLE %s;" tablename-rev))
-       (j/execute! con (format "DROP TABLE %s;" tablename-storage))
-       (j/execute-prepared! con sql)
-       (t/right)))))
-
+  (m/mlet [sql  (makesql-delete-collection-from-registry c)
+           :let [tablename-storage (get-mainstore-tablename c)
+                 tablename-rev     (get-revisions-tablename c)]]
+    (serr/catch-sqlexception
+     (j/execute! con (format "DROP TABLE %s;" tablename-rev))
+     (j/execute! con (format "DROP TABLE %s;" tablename-storage))
+     (j/execute-prepared! con sql)
+     (t/right))))
 
 ;; (defn drop
 ;;   [con c]
