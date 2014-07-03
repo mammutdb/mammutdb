@@ -53,12 +53,12 @@
 ;; Types
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defprotocol CollectionType
-  (get-mainstore-tablename [_] "Get storage tablename for collection")
-  (get-revisions-tablename [_] "Get storage tablename for collection"))
+(defprotocol Collection
+  (get-mainstore-tablename [_] "Get main storage tablename for collection")
+  (get-revisions-tablename [_] "Get rev storage tablename for collection")
+  (drop! [_ con] "Drop collection"))
 
-;; Type that represents a collection
-(deftype Collection [name]
+(deftype DocumentCollection [name]
   Object
   (toString [_]
     (with-out-str
@@ -67,22 +67,36 @@
   (equals [_ other]
     (= name (.-name other)))
 
-  CollectionType
+  Collection
   (get-mainstore-tablename [_]
     (str name "_storage"))
   (get-revisions-tablename [_]
-    (str name "_revisions")))
+    (str name "_revisions"))
 
-(alter-meta! #'->Collection assoc :no-doc true :private true)
+  (drop! [c con]
+    (let [sql               [(:delete-collection @sql-ops) name]
+          tablename-storage (get-mainstore-tablename c)
+          tablename-rev     (get-revisions-tablename c)]
+      (serr/catch-sqlexception
+       (j/execute! con (format "DROP TABLE %s;" tablename-rev))
+       (j/execute! con (format "DROP TABLE %s;" tablename-storage))
+       (j/execute-prepared! con sql)
+       (t/right)))))
+
+(alter-meta! #'->DocumentCollection assoc :no-doc true :private true)
 
 (defn ->collection
   "Default constructor for collection type."
   [name]
-  (Collection. name))
+  (DocumentCollection. name))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; SQL Constructors
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn safe-name?
+  "Parse collection name and return a safe
+  string or nil."
+  [name]
+  (if (re-matches *collection-safe-rx* name)
+    (t/right true)
+    (e/error :collection-name-unsafe)))
 
 (defn makesql-collection-exists
   "Build sql query for check the existence
@@ -91,10 +105,16 @@
   (-> [(:collection-exists @sql-queries) collname]
       (t/right)))
 
-(defn makesql-get-collection-by-name
-  [^String name]
-  (-> [(:collection-by-name @sql-queries) name]
-      (t/right)))
+(defn exists?
+  "Check if collection with given name, are
+  previously created."
+  [conn name]
+  (m/mlet [sql (makesql-collection-exists name)
+           res (serr/wrap (j/query-first conn sql))]
+    (if (:exists res)
+      (m/return name)
+      (e/error :collection-not-exists
+               (format "Collection '%s' does not exists" name)))))
 
 (defn makesql-create-collection-mainstore
   "Build create ddl sql for collection storage table"
@@ -115,79 +135,41 @@
   (-> [(:persist-collection @sql-ops) (.-name c)]
       (t/right)))
 
-(defn makesql-delete-collection-from-registry
-  [c]
-  (-> [(:delete-collection @sql-ops) (.-name c)]
-      (t/right)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Utils
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn safe-name?
-  "Parse collection name and return a safe
-  string or nil."
-  [name]
-  (if (re-matches *collection-safe-rx* name)
-    (t/right true)
-    (e/error :collection-name-unsafe)))
-
-;; (defn exists?
-;;   "Check if collection with given name, are
-;;   previously created."
-;;   [conn name]
-;;   (m/mlet [sql (makesql-collection-exists name)
-;;            res (serr/wrap (j/query-first conn sql))]
-;;     (if (:exists res)
-;;       (m/return name)
-;;       (e/error :collection-not-exists
-;;                (format "Collection '%s' does not exists" name)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Basic collection crud.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defn create
-  [conn ^String name]
+  [^String name con]
   (m/mlet [safe? (safe-name? name)
            :let  [c (->collection name)]
            sql1  (makesql-create-collection-mainstore c)
            sql2  (makesql-create-collection-revision c)
            sql3  (makesql-persist-collection-in-registry c)]
     (serr/catch-sqlexception
-     (j/execute! conn sql1)
-     (j/execute! conn sql2)
-     (j/execute-prepared! conn sql3)
+     (j/execute! con sql1)
+     (j/execute! con sql2)
+     (j/execute-prepared! con sql3)
      (m/return c))))
+
+(defn makesql-get-collection-by-name
+  [^String name]
+  (-> [(:collection-by-name @sql-queries) name]
+      (t/right)))
 
 (defn get-by-name
   "Get collection by its name."
-  [conn ^String name]
+  [^String name con]
   (m/mlet [sql (makesql-get-collection-by-name name)
-           rev (serr/wrap (j/query-first conn sql))]
+           rev (serr/wrap (j/query-first con sql))]
     (if rev
       (m/return (->collection name))
       (e/error :collection-not-exists
                (format "Collection '%s' does not exists" name)))))
 
-(defn drop
-  [con c]
-  (m/mlet [sql  (makesql-delete-collection-from-registry c)
-           :let [tablename-storage (get-mainstore-tablename c)
-                 tablename-rev     (get-revisions-tablename c)]]
-    (serr/catch-sqlexception
-     (j/execute! con (format "DROP TABLE %s;" tablename-rev))
-     (j/execute! con (format "DROP TABLE %s;" tablename-storage))
-     (j/execute-prepared! con sql)
-     (t/right))))
-
 ;; (defn drop
 ;;   [con c]
 ;;   (m/mlet [sql  (makesql-delete-collection-from-registry c)
 ;;            :let [tablename-storage (get-mainstore-tablename c)
-;;                  tablename-rev     (get-revisions-tablename c)]
-
-;;            _    (sconn/execute (format "DROP TABLE %s;" tablename-rev))
-;;            _    (sconn/execute (format "DROP TABLE %s;" tablename-storage))
-;;            _    (sconn/execute-prepared sql)]
-;;     (m/return (t/right))))
+;;                  tablename-rev     (get-revisions-tablename c)]]
+;;     (serr/catch-sqlexception
+;;      (j/execute! con (format "DROP TABLE %s;" tablename-rev))
+;;      (j/execute! con (format "DROP TABLE %s;" tablename-storage))
+;;      (j/execute-prepared! con sql)
+;;      (t/right))))

@@ -26,33 +26,33 @@
 
   (testing "Get collection."
     (with-open [c (j/make-connection @sconn/datasource)]
-      (let [mr (scoll/get-by-name c "testcoll")
+      (let [mr (scoll/get-by-name "testcoll" c)
             r  (t/from-either mr)]
         (is (t/left? mr))
         (is (= (:error-code r) :collection-not-exists)))
 
-      (let [mr1 (scoll/create c "testcoll")
-            mr2 (scoll/get-by-name c "testcoll")]
+      (let [mr1 (scoll/create "testcoll" c)
+            mr2 (scoll/get-by-name "testcoll" c)]
         (is (t/right? mr2))
         (is (= mr1 mr2)))
 
-      (scoll/drop c (scoll/->collection "testcoll"))))
+      (scoll/drop! (scoll/->collection "testcoll") c)))
 
   (testing "Creating and existence of collection"
     (with-open [c (j/make-connection @sconn/datasource)]
-      (let [mr (scoll/create c "testcoll")
+      (let [mr (scoll/create "testcoll" c)
             r  (t/from-either mr)]
         (is (= r (scoll/->collection "testcoll"))))
-      (scoll/drop c (scoll/->collection "testcoll"))))
+      (scoll/drop! (scoll/->collection "testcoll") c)))
 
   (testing "Created duplicate collection"
     (with-open [c (j/make-connection @sconn/datasource)]
-      (let [mr (scoll/create c "testcoll")
-            mr (scoll/create c "testcoll")
+      (let [mr (scoll/create "testcoll" c)
+            mr (scoll/create "testcoll" c)
             r  (t/from-either mr)]
         (is (= (:error-code r) :collection-exists))
         (is (= (-> r :error-ctx :sqlstate) :42P07)))
-      (scoll/drop c (scoll/->collection "testcoll"))))
+      (scoll/drop! (scoll/->collection "testcoll") c)))
 )
 
 
