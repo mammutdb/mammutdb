@@ -36,6 +36,14 @@
    {:msg "Collection does not exists"
     :http-code :404}
 
+   :database-not-exists
+   {:msg "Database does not exists"
+    :http-code :404}
+
+   :database-name-unsafe
+   {:msg "Database name is unsafe"
+    :http-code :400}
+
    :internal-error
    {:msg "Internal error"
     :http-code :500}

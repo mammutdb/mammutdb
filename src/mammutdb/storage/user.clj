@@ -22,14 +22,14 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.storage.users
+(ns mammutdb.storage.user
   "Authentication relates storage functions."
   (:require [clojure.java.io :as io]
             [cats.core :as m]
             [cats.types :as t]
             [jdbc.core :as j]
             [mammutdb.core.edn :as edn]
-            [mammutdb.storage.connection :as c]))
+            [mammutdb.storage.connection :as sconn]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SQL Readers

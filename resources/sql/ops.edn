@@ -1,25 +1,4 @@
-{:create-default-schema-revision
- "CREATE TABLE %s (
-    id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
-    data json,
-    revision uuid DEFAULT uuid_generate_v1(),
-    created_at timestamp with time zone
-  );"
-
- :create-default-schema-mainstore
- "CREATE TABLE %s (
-    id uuid UNIQUE PRIMARY KEY,
-    data json,
-    revision uuid,
-    created_at timestamp with time zone
-  );"
-
- :persist-collection
- "INSERT INTO mammutdb_collections (name) VALUES (?);"
-
- :delete-collection
- "DELETE FROM mammutdb_collections WHERE name = ?;"
-
+{
  :persist-document-on-mainstore
  "INSERT INTO %s (id, data, revision, created_at) VALUES (?, ?, ?, ?);"
 

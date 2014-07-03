@@ -22,68 +22,20 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.storage.connection
-  (:require [jdbc.core :as j]
-            [jdbc.pool.dbcp :as pool]
-            [cats.core :as m]
-            [cats.types :as t]
-            [mammutdb.config :as config]
-            [mammutdb.storage.errors :as serr]))
-
-(def ^:dynamic
-  datasource (delay (let [cfg (config/read-storage-config)]
-                      (pool/make-datasource-spec (t/from-either cfg)))))
-
-(defn new-connection
-  "Monadic function for create new connection."
-  []
-  (serr/catch-sqlexception
-   (t/right (j/make-connection @datasource))))
-
-(defn close-connection
-  "Monadic close connection function."
-  [con]
-  (serr/catch-sqlexception
-   (.close con)
-   (t/right true)))
-
-(defn query
-  [con sql]
-  (serr/wrap (j/query con sql)))
-
-(defn query-first
-  [con sql]
-  (serr/wrap (j/query-first con sql)))
-
+(ns mammutdb.types.collection)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; State Monad Jdbc operatiosn (not used at this momment)
+;; Constants
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (defn execute
-;;   [sql]
-;;   (-> (fn [con]
-;;         (j/execute! con sql)
-;;         (t/pair nil con))
-;;       (t/state-t)))
+(def ^:dynamic *collection-safe-rx* #"[\w\_\-]+")
 
-;; (defn execute-prepared
-;;   [sql]
-;;   (-> (fn [con]
-;;         (j/execute-prepared! con sql)
-;;         (t/pair nil con))
-;;       (t/state-t)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Protocols
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (defn query
-;;   [sql]
-;;   (-> (fn [con]
-;;         (let [res (j/query con sql)]
-;;           (t/pair res con)))
-;;       (t/state-t)))
-
-;; (defn query-first
-;;   [sql]
-;;   (-> (fn [con]
-;;         (let [r (m/eval-state (query sql) con)]
-;;           (t/pair r con)))
-;;       (t/state-t)))
+(defprotocol Collection
+  (get-mainstore-tablename [_] "Get main storage tablename for collection")
+  (get-revisions-tablename [_] "Get rev storage tablename for collection")
+  (get-database [_] "Get database of this collection.")
+  (drop! [_ con] "Drop collection"))

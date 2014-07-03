@@ -11,16 +11,19 @@
 
  :v1 {:collections-create-table
       "CREATE TABLE mammutdb_collections (
-         name varchar(1024) UNIQUE PRIMARY KEY,
+         id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
+         name varchar(1024),
+         database varchar(1024),
          metadata json DEFAULT '{}'::json,
-         created_at timestamp with time zone DEFAULT now()
+         created_at timestamp with time zone DEFAULT now(),
+         UNIQUE (name, database)
        );"
 
-      :metadata-create-table
-      "CREATE TABLE mammutdb_metadata (
-         type varchar(255) UNIQUE PRIMARY KEY,
-         value json DEFAULT '{}'::json
-       );"
+      ;; :metadata-create-table
+      ;; "CREATE TABLE mammutdb_metadata (
+      ;;    type varchar(255) UNIQUE PRIMARY KEY,
+      ;;    value json DEFAULT '{}'::json
+      ;;  );"
 
       :users-create-table
       "CREATE TABLE mammutdb_users (
@@ -28,7 +31,18 @@
          username varchar(255) UNIQUE,
          password varchar(255) DEFAULT '!',
          role varchar(255) default 'user'
-       );"}}
+       );"}
+
+ :v2 {:databases-table
+      "CREATE TABLE mammutdb_databases (
+         id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
+         name varchar(255) UNIQUE,
+         created_at timestamp with time zone DEFAULT now()
+       );"
+
+      :databases-field-user
+      "ALTER TABLE mammutdb_users
+       ADD COLUMN databases text[] NULL DEFAULT '{}'::text[];"}}
 
 
 

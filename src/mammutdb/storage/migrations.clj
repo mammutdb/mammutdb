@@ -67,11 +67,19 @@
   (let [sqldata (:v1 @sql-migrations)]
     (tx/with-transaction conn
       (j/execute! conn (:collections-create-table sqldata))
-      (j/execute! conn (:metadata-create-table sqldata))
+      ;; (j/execute! conn (:metadata-create-table sqldata))
       (j/execute! conn (:users-create-table sqldata)))))
 
+(defn- migrate-v2
+  [conn]
+  (let [sqldata (:v2 @sql-migrations)]
+    (tx/with-transaction conn
+      (j/execute! conn (:databases-table sqldata))
+      (j/execute! conn (:databases-field-user sqldata)))))
+
 (def ^:private
-  migrations [["0001" migrate-v1]])
+  migrations [["0001" migrate-v1]
+              ["0002" migrate-v2]])
 
 (defn bootstrap
   "Initialize migrations system and create

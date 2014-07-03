@@ -2,10 +2,55 @@
   (:require [clojure.test :refer :all]
             [cats.types :as t]
             [jdbc.core :as j]
-            [mammutdb.storage.collections :as scoll]
+            [mammutdb.storage.collection :as scoll]
+            [mammutdb.storage.database :as sdb]
             [mammutdb.storage.connection :as sconn]
             [mammutdb.storage.migrations :as migrations]
             [mammutdb.config :as config]))
+
+(deftest databases
+  ;; Setup
+  (config/setup-config "test/testconfig.edn")
+  (migrations/bootstrap)
+
+  (testing "Database name safety"
+    (is (t/right? (sdb/safe-name? "testdbname")))
+    (let [r (sdb/safe-name? "dbname@")
+          i (t/from-either r)]
+      (is (t/left? r))
+      (is (= (:error-code i) :database-name-unsafe))))
+
+  (testing "Not existence of database"
+    (with-open [con (j/make-connection @sconn/datasource)]
+      (let [mr (sdb/exists? "notexistsdb" con)
+            r  (t/from-either mr)]
+        (is (t/left? mr))
+        (is (= (:error-code r) :database-not-exists)))))
+
+  (testing "Create/Delete database"
+    (with-open [con (j/make-connection @sconn/datasource)]
+      (let [mr (sdb/create "testdb" con)
+            r  (t/from-either mr)]
+        (is (t/right? mr))
+        (is (= r (sdb/->database "testdb"))))
+
+      (let [mr (sdb/exists? "testdb" con)
+            r  (t/from-either mr)]
+        (is (t/right? mr))
+        (is r))
+
+      (sdb/drop! (sdb/->database "testdb") con)))
+
+  (testing "Create duplicate database"
+    (with-open [con (j/make-connection @sconn/datasource)]
+      (let [mr1 (sdb/create "testdb" con)
+            mr2 (sdb/create "testdb" con)
+            r   (t/from-either mr2)]
+        (is (t/right? mr1))
+        (is (t/left? mr2)))
+      ;; TODO: test error code
+      (sdb/drop! (sdb/->database "testdb") con)))
+)
 
 (deftest collections
   ;; Setup
@@ -20,39 +65,38 @@
       (is (t/left? r))
       (is (= (:error-code i) :collection-name-unsafe))))
 
-  ;; (testing "Not existence of one collection"
-  ;;   (with-open [c (j/make-connection @sconn/datasource)]
-  ;;     (is (t/left? (scoll/exists? c "notexistent")))))
-
-  (testing "Get collection."
-    (with-open [c (j/make-connection @sconn/datasource)]
-      (let [mr (scoll/get-by-name "testcoll" c)
+  (testing "Not existence of one collection"
+    (with-open [con (j/make-connection @sconn/datasource)]
+      (let [db (sdb/->database "testdb")
+            mr (scoll/exists? db "notexistent" con)
             r  (t/from-either mr)]
         (is (t/left? mr))
-        (is (= (:error-code r) :collection-not-exists)))
+        (is (= (:error-code r) :collection-not-exists)))))
 
-      (let [mr1 (scoll/create "testcoll" c)
-            mr2 (scoll/get-by-name "testcoll" c)]
-        (is (t/right? mr2))
-        (is (= mr1 mr2)))
-
-      (scoll/drop! (scoll/->collection "testcoll") c)))
-
-  (testing "Creating and existence of collection"
-    (with-open [c (j/make-connection @sconn/datasource)]
-      (let [mr (scoll/create "testcoll" c)
-            r  (t/from-either mr)]
-        (is (= r (scoll/->collection "testcoll"))))
-      (scoll/drop! (scoll/->collection "testcoll") c)))
+  (testing "Create/Delete collection"
+    (with-open [con (j/make-connection @sconn/datasource)]
+      (let [db (sdb/->database "testdb")]
+        (let [mr (scoll/create db "testcoll" con)
+              r  (t/from-either mr)]
+          (is (t/right? mr))
+          (is (= r (scoll/->collection db "testcoll"))))
+        (let [mr (scoll/exists? db "testcoll" con)
+              r  (t/from-either mr)]
+          (is (t/right? mr))
+          (is r))
+        (scoll/drop! (scoll/->collection db "testcoll") con))))
 
   (testing "Created duplicate collection"
-    (with-open [c (j/make-connection @sconn/datasource)]
-      (let [mr (scoll/create "testcoll" c)
-            mr (scoll/create "testcoll" c)
-            r  (t/from-either mr)]
-        (is (= (:error-code r) :collection-exists))
-        (is (= (-> r :error-ctx :sqlstate) :42P07)))
-      (scoll/drop! (scoll/->collection "testcoll") c)))
+    (with-open [con (j/make-connection @sconn/datasource)]
+      (let [db (sdb/->database "testdb")]
+        (let [mr1 (scoll/create db "testcoll" con)
+              mr2 (scoll/create db "testcoll" con)
+              r   (t/from-either mr2)]
+          (is (t/right? mr1))
+          (is (t/left? mr2))
+          (is (= (:error-code r) :collection-exists))
+          (is (= (-> r :error-ctx :sqlstate) :42P07)))
+        (scoll/drop! (scoll/->collection db "testcoll") con))))
 )
 
 

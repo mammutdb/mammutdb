@@ -22,7 +22,7 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.storage.documents
+(ns mammutdb.storage.document
   (:require [cats.types :as t]
             [cats.core :as m]
             [jdbc.core :as j]
@@ -42,7 +42,6 @@
 
 (def ^:private sql-queries
   (delay (edn/from-resource "sql/query.edn")))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Types

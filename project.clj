@@ -35,6 +35,8 @@
                  [cats "0.1.0-SNAPSHOT" :exclusions [org.clojure/clojure]]
                  [potemkin "0.3.4"]
                  [prismatic/schema "0.2.4"]
+                 ;; [org.apache.logging.log4j/log4j-core "2.0-rc1"]
+                 ;; [org.apache.logging.log4j/log4j-api "2.0-rc1"]
 
                  ;; Storage
                  [clojure.jdbc "0.2.1"]
@@ -47,6 +49,7 @@
                  [info.sunng/ring-jetty9-adapter "0.6.0" :exclusions [ring/ring-core]]
                  [ring/ring-core "1.2.2" :exclusions [javax.servlet/servlet-api]]
                  [ring/ring-servlet "1.2.2" :exclusions [javax.servlet/servlet-api]]]
+  ;; :aot :all
   :main ^:skip-aot mammutdb.cli
   :target-path "target/%s"
   :injections [(use 'cats.types)
