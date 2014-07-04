@@ -28,9 +28,12 @@
             [cats.core :as m]
             [cats.types :as t]
             [jdbc.core :as j]
+            [buddy.hashers.bcrypt :as hasher]
             [mammutdb.core.edn :as edn]
             [mammutdb.core.errors :as e]
+            [mammutdb.storage.errors :as serr]
             [mammutdb.storage.types :as stypes]
+            [mammutdb.storage.protocols :as sproto]
             [mammutdb.storage.connection :as sconn])
   (:import mammutdb.storage.types.User))
 
@@ -39,22 +42,58 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn get-user-by-username
-  [^String username con]
-  (m/mlet [:let    [sql ["SELECT id, username, password
-                          FROM mammutdb_user WHERE username = ?;"
-                         username]]
-           result  (sconn/query-first con sql)]
+  [^String username conn]
+  (m/mlet [:let   [sql ["SELECT id, username, password
+                         FROM mammutdb_user WHERE username = ?;"
+                        username]]
+           result (sconn/query-first conn sql)]
     (if result
       (t/right (stypes/map->user result))
       (e/error :user-not-exists
                (format "User '%s' not exists" username)))))
 
 (defn get-user-by-id
-  [^Long id con]
+  [^Long id conn]
   (m/mlet [:let   [sql ["SELECT id, username, password
                          FROM mammutdb_user WHERE id = ?;" id]]
-           result (sconn/query-first con sql)]
+           result (sconn/query-first conn sql)]
     (if result
       (t/right (stypes/map->user result))
       (e/error :user-not-exists
                (format "User with id '%s' not exists" id)))))
+
+(defn exists?
+  [^String username conn]
+  (let [sql ["SELECT EXISTS(SELECT 1 FROM mammutdb_users
+                            WHERE username = ?)" username]]
+    (m/mlet [res (sconn/query-first conn sql)]
+      (if (:exists res)
+        (m/return username)
+        (e/error :user-not-exists
+                 (format "User '%s' not exists" username))))))
+
+(defn create!
+  [^String username ^String password conn]
+  (let [password (hasher/make-password password)
+        sql      ["INSERT INTO mammutdb_users (username, password)
+                   VALUES (?, ?);"
+                  username,
+                  password]]
+    (serr/catch-sqlexception
+     (let [res (j/execute-prepared! conn sql {:returning :all})]
+       (t/right (stypes/map->user (first res)))))))
+
+(extend-type User
+  sproto/Droppable
+  (drop! [user conn]
+    (m/mlet [_    (exists? (.-username user) conn)
+             :let [sql ["DELETE FROM mammutdb_users
+                         WHERE id = ?;" (.-id user)]]]
+      (serr/catch-sqlexception
+       (j/execute-prepared! conn sql)
+       (t/right)))))
+
+(defn drop!
+  [user conn]
+  (sproto/drop! user conn))
+

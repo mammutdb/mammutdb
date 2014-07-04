@@ -74,8 +74,7 @@
   [conn]
   (let [sqldata (:v2 @sql-migrations)]
     (tx/with-transaction conn
-      (j/execute! conn (:databases-table sqldata))
-      (j/execute! conn (:databases-field-user sqldata)))))
+      (j/execute! conn (:databases-table sqldata)))))
 
 (def ^:private
   migrations [["0001" migrate-v1]
