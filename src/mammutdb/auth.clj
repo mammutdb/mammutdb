@@ -24,12 +24,14 @@
 
 (ns mammutdb.auth
   "Authentication functions for mammutdb."
-  (:require [mammutdb.storage.users :as users]
+  (:require [mammutdb.storage.user :as user]
             [mammutdb.config :as config]
             [cats.core :as m]
             [cats.types :as t]
             [buddy.hashers.bcrypt :as hasher]
-            [buddy.sign.jws :as jws]))
+            [buddy.sign.jws :as jws]
+            [mammutdb.storage.user :as user]
+            [mammutdb.storage.types :as stypes]))
 
 (def secret-key (delay (config/read-secret-key)))
 
@@ -69,14 +71,14 @@
   "Given user credentials, authenticate them and return
   user record with access token."
   [^String username ^String password]
-  (m/mlet [user  (users/get-user-by-username username)
+  (m/mlet [user  (user/get-user-by-username username)
            ok    (check-user-password user password)
            token (make-access-token (.-id user))]
-    (m/return (users/->user user token))))
+    (m/return (stypes/->user user token))))
 
 (defn authenticate-token
   "Given a token, return a user record for it or fail."
   [^String token]
   (m/mlet [userid (validate-access-token token)
-           user   (users/get-user-by-id userid)]
+           user   (user/get-user-by-id userid)]
     (m/return user)))

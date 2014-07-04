@@ -44,6 +44,10 @@
    {:msg "Database name is unsafe"
     :http-code :400}
 
+   :user-not-exists
+   {:msg "User does not exists"
+    :http-code :404}
+
    :internal-error
    {:msg "Internal error"
     :http-code :500}

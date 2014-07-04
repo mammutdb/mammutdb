@@ -50,15 +50,23 @@
 ;;   (toString [_]
 ;;     (with-out-str
 ;;       (print [id rev])))
-
 ;;   (equals [_ other]
 ;;     (and (= id (.-id other))
 ;;          (= rev (.-rev other)))))
 
+(deftype User [id username password token]
+  Object
+  (equals [_ other]
+    (= id (.-id other)))
+
+  (toString [_]
+    (with-out-str
+      (print [id username]))))
+
 (alter-meta! #'->Database assoc :no-doc true :private true)
 (alter-meta! #'->DocumentCollection assoc :no-doc true :private true)
+(alter-meta! #'->User assoc :no-doc true :private true)
 ;; (alter-meta! #'->JsonDocument assoc :no-doc true :private true)
-
 
 (defn ->database
   "Default constructor for database instance."
@@ -70,3 +78,23 @@
   [^Database db ^String name]
   (DocumentCollection. db name))
 
+(defn user?
+  [v]
+  (instance? User v))
+
+(defn ->user
+  "Default user constructor."
+  ([^User user token]
+     (assert (user? user))
+     (User. (.-id user)
+            (.-username user)
+            (.-password user)
+            token))
+  ([^Long id ^String username ^String password]
+     (User. id username password nil))
+  ([^Long id ^String username ^String password ^String token]
+     (User. id username password token)))
+
+(defn map->user
+  [{:keys [id username password]}]
+  (->user id username password))

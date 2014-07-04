@@ -29,69 +29,32 @@
             [cats.types :as t]
             [jdbc.core :as j]
             [mammutdb.core.edn :as edn]
-            [mammutdb.storage.connection :as sconn]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; SQL Readers
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def ^:private sql-queries
-  (delay (edn/from-resource "sql/query.edn")))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Types
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(deftype User [id username password token]
-  Object
-  (equals [_ other]
-    (= id (.-id other)))
-
-  (toString [_]
-    (with-out-str
-      (print [id username]))))
-
-(alter-meta! #'->User assoc :no-doc true :private true)
-
-(defn user?
-  [v]
-  (instance? User v))
-
-(defn ->user
-  "Default user constructor."
-  ([^User user token]
-     (assert (user? user))
-     (User. (.-id user)
-            (.-username user)
-            (.-password user)
-            token))
-  ([^Long id ^String username ^String password]
-     (User. id username password nil))
-  ([^Long id ^String username ^String password ^String token]
-     (User. id username password token)))
-
-(defn map->user
-  [{:keys [id username password]}]
-  (->user id username password))
+            [mammutdb.core.errors :as e]
+            [mammutdb.storage.types :as stypes]
+            [mammutdb.storage.connection :as sconn])
+  (:import mammutdb.storage.types.User))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn get-user-by-username
-  [^String username]
-  (j/with-connection [conn @c/datasource]
-    (let [sql     (:user-by-username @sql-queries)
-          result  (j/query-first conn [sql username])]
-      (if result
-        (t/right (map->user result))
-        (t/left (format "No user found with username: %s" username))))))
+  [^String username con]
+  (m/mlet [:let    [sql ["SELECT id, username, password
+                          FROM mammutdb_user WHERE username = ?;"
+                         username]]
+           result  (sconn/query-first con sql)]
+    (if result
+      (t/right (stypes/map->user result))
+      (e/error :user-not-exists
+               (format "User '%s' not exists" username)))))
 
 (defn get-user-by-id
-  [^Long id]
-  (j/with-connection [conn @c/datasource]
-    (let [sql     (:user-by-id @sql-queries)
-          result  (j/query-first conn [sql id])]
-      (if result
-        (t/right (map->user result))
-        (t/left (format "No user found with id: %s" id))))))
+  [^Long id con]
+  (m/mlet [:let   [sql ["SELECT id, username, password
+                         FROM mammutdb_user WHERE id = ?;" id]]
+           result (sconn/query-first con sql)]
+    (if result
+      (t/right (stypes/map->user result))
+      (e/error :user-not-exists
+               (format "User with id '%s' not exists" id)))))
