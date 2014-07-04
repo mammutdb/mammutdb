@@ -13,6 +13,7 @@
       "CREATE TABLE mammutdb_collections (
          id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
          name varchar(1024),
+         type varchar(255),
          database varchar(1024),
          metadata json DEFAULT '{}'::json,
          created_at timestamp with time zone DEFAULT now(),

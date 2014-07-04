@@ -53,14 +53,14 @@
     (-> (.-name db)
         (str/lower-case)))
 
-  ;; TODO at this momment does not distinguish between
-  ;; collection types and always return doc collections.
   (get-collections [db con]
-    (let [sql ["SELECT name FROM mammutdb_collections
+    (let [sql ["SELECT name, type FROM mammutdb_collections
                 WHERE database = ? ORDER BY name"
                (sproto/get-database-name db)]]
       (m/mlet [results (sconn/query con sql)]
-        (-> (fn [record] (stypes/->doc-collection db (:name record)))
+        (-> (fn [{:keys [name type]}]
+              (case (keyword type)
+                :document (stypes/->doc-collection db name)))
             (mapv results)
             (m/return)))))
 
@@ -92,7 +92,7 @@
       (e/error :database-not-exists
                (format "Database '%s' does not exists" name)))))
 
-(defn create
+(defn create!
   [name con]
   (m/mlet [safe (safe-name? name)
            :let [sql ["INSERT INTO mammutdb_databases (name) VALUES (?)" name]]]

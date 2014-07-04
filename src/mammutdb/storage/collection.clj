@@ -122,23 +122,30 @@
                  created_at timestamp with time zone);")))
 
 (defn- make-persist-collection-sql
-  [db coll]
-  ["INSERT INTO mammutdb_collections (name, database) VALUES (?, ?);"
+  [db coll type]
+  ["INSERT INTO mammutdb_collections (type, name, database)
+    VALUES (?, ?, ?);"
+   type
    (sproto/get-collection-name coll)
    (sproto/get-database-name db)])
 
-(defn create
+(defn create-document-collection
   [db name con]
   (m/mlet [safe?   (safe-name? name)
            :let    [coll (stypes/->doc-collection db name)
                     sql1 (make-mainstore-sql coll)
                     sql2 (make-revisions-sql coll)
-                    sql3 (make-persist-collection-sql db coll)]]
+                    sql3 (make-persist-collection-sql db coll "document")]]
     (serr/catch-sqlexception
      (j/execute! con sql1)
      (j/execute! con sql2)
      (j/execute-prepared! con sql3)
      (m/return coll))))
+
+(defn create!
+  [type db name con]
+  (case (keyword type)
+    :document (create-document-collection db name con)))
 
 (defn get-by-name
   "Get collection by its name."

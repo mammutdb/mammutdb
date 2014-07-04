@@ -30,7 +30,7 @@
 
   (testing "Create/Delete database"
     (with-open [con (j/make-connection @sconn/datasource)]
-      (let [mr (sdb/create "testdb" con)
+      (let [mr (sdb/create! "testdb" con)
             r  (t/from-either mr)]
         (is (t/right? mr))
         (is (= r (stypes/->database "testdb"))))
@@ -44,8 +44,8 @@
 
   (testing "Create duplicate database"
     (with-open [con (j/make-connection @sconn/datasource)]
-      (let [mr1 (sdb/create "testdb" con)
-            mr2 (sdb/create "testdb" con)
+      (let [mr1 (sdb/create! "testdb" con)
+            mr2 (sdb/create! "testdb" con)
             r   (t/from-either mr2)]
         (is (t/right? mr1))
         (is (t/left? mr2)))
@@ -77,7 +77,7 @@
   (testing "Create/Delete collection"
     (with-open [con (j/make-connection @sconn/datasource)]
       (let [db (stypes/->database "testdb")]
-        (let [mr (scoll/create db "testcoll" con)
+        (let [mr (scoll/create! :document db "testcoll" con)
               r  (t/from-either mr)]
           (is (t/right? mr))
           (is (= r (stypes/->doc-collection db "testcoll"))))
@@ -90,8 +90,8 @@
   (testing "Created duplicate collection"
     (with-open [con (j/make-connection @sconn/datasource)]
       (let [db (stypes/->database "testdb")]
-        (let [mr1 (scoll/create db "testcoll" con)
-              mr2 (scoll/create db "testcoll" con)
+        (let [mr1 (scoll/create! :document db "testcoll" con)
+              mr2 (scoll/create! :document db "testcoll" con)
               r   (t/from-either mr2)]
           (is (t/right? mr1))
           (is (t/left? mr2))
