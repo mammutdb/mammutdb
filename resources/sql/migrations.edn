@@ -30,8 +30,7 @@
       "CREATE TABLE mammutdb_users (
          id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
          username varchar(255) UNIQUE,
-         password varchar(255) DEFAULT '!',
-         role varchar(255) default 'user'
+         password varchar(255) DEFAULT '!'
        );"}
 
  :v2 {:databases-table
@@ -39,11 +38,5 @@
          id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
          name varchar(255) UNIQUE,
          created_at timestamp with time zone DEFAULT now()
-       );"
-
-      :databases-field-user
-      "ALTER TABLE mammutdb_users
-       ADD COLUMN databases text[] NULL DEFAULT '{}'::text[];"}}
-
-
+       );"}}
 

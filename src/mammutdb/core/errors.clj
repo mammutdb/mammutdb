@@ -48,6 +48,10 @@
    {:msg "User does not exists"
     :http-code :404}
 
+   :wrong-authentication
+   {:msg "Wrong credentials"
+    :http-code :400}
+
    :internal-error
    {:msg "Internal error"
     :http-code :500}
