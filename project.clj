@@ -46,7 +46,11 @@
 
                  ;; Http Api interface
                  [compojure "1.1.8"]
+
+                 [metosin/ring-http-response "0.4.0"]
                  [info.sunng/ring-jetty9-adapter "0.6.0" :exclusions [ring/ring-core]]
+                 [ring/ring-ssl "0.2.1" :exclusions [ring/ring-core]]
+                 [ring/ring-json "0.3.1" :exclusions [ring/ring-core]]
                  [ring/ring-core "1.2.2" :exclusions [javax.servlet/servlet-api]]
                  [ring/ring-servlet "1.2.2" :exclusions [javax.servlet/servlet-api]]]
   ;; :aot :all
