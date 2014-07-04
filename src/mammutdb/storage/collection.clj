@@ -29,117 +29,131 @@
             [clojure.string :as str]
             [mammutdb.core.edn :as edn]
             [mammutdb.core.errors :as e]
-            [mammutdb.types.collection :as tcoll]
-            [mammutdb.types.database :as tdb]
+            [mammutdb.storage.types :as stypes]
+            [mammutdb.storage.protocols :as sproto]
             [mammutdb.storage.json :as json]
             [mammutdb.storage.errors :as serr]
-            [mammutdb.storage.connection :as sconn]))
+            [mammutdb.storage.connection :as sconn])
+  (:import mammutdb.storage.types.DocumentCollection))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def ^:dynamic *collection-safe-rx* #"[\w\_\-]+")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Types
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype DocumentCollection [database name]
-  Object
-  (toString [_]
-    (with-out-str
-      (print [(tdb/get-name database) name])))
-
-  (equals [_ other]
-    (and (= name (.-name other))
-         (= database (.database other))))
-
-  tcoll/Collection
-  (get-mainstore-tablename [_]
+(extend-type DocumentCollection
+  sproto/Collection
+  (get-mainstore-tablename [coll]
     (format "%s_%s_storage"
-            (tdb/get-name database)
-            (str/lower-case name)))
+            (sproto/get-database-name (.-database coll))
+            (sproto/get-collection-name coll)))
 
-  (get-revisions-tablename [_]
+  (get-revisions-tablename [coll]
     (format "%s_%s_revisions"
-            (tdb/get-name database)
-            (str/lower-case name)))
+            (sproto/get-database-name (sproto/get-database coll))
+            (sproto/get-collection-name coll)))
 
-  (get-database [_]
-    database)
+  (get-collection-name [coll]
+    (.-name coll))
 
-  (drop! [c con]
-    (let [sql1 ["DELETE FROM mammutdb_collections
-                 WHERE name = ? AND database = ?;"
-                (str/lower-case name)
-                (tdb/get-name database)]
-          sql2 (format "DROP TABLE %s;" (tcoll/get-mainstore-tablename c))
-          sql3 (format "DROP TABLE %s;" (tcoll/get-revisions-tablename c))]
+  (get-database [coll]
+    (.-database coll))
+
+  sproto/Droppable
+  (drop! [coll con]
+    (let [collnane (sproto/get-collection-name coll)
+          dbname   (sproto/get-database-name (sproto/get-database coll))
+          tblmain  (sproto/get-mainstore-tablename coll)
+          tblrev   (sproto/get-revisions-tablename coll)
+          sql1     ["DELETE FROM mammutdb_collections
+                     WHERE name = ? AND database = ?;"
+                     collnane
+                     dbname]
+          sql2     (format "DROP TABLE %s;" tblmain)
+          sql3     (format "DROP TABLE %s;" tblrev)]
       (serr/catch-sqlexception
        (j/execute! con sql3)
        (j/execute! con sql2)
        (j/execute-prepared! con sql1)
        (t/right)))))
 
-(alter-meta! #'->DocumentCollection assoc :no-doc true :private true)
-
-(defn ->collection
-  "Default constructor for collection type."
-  [database name]
-  (DocumentCollection. database name))
-
 (defn safe-name?
   "Parse collection name and return a safe
   string or nil."
   [name]
-  (if (re-matches tcoll/*collection-safe-rx* name)
+  (if (re-matches *collection-safe-rx* name)
     (t/right true)
     (e/error :collection-name-unsafe)))
 
 (defn exists?
   "Check if collection with given name, are
   previously created."
-  [database name con]
+  [db name con]
   (let [sql "SELECT EXISTS(SELECT * FROM mammutdb_collections
              WHERE name = ? AND database = ?);"
-        sql [sql name (tdb/get-name database)]]
+        sql [sql name (sproto/get-database-name db)]]
     (m/mlet [res (sconn/query-first con sql)]
       (if (:exists res)
         (m/return name)
         (e/error :collection-not-exists
                  (format "Collection '%s' does not exists" name))))))
 
+(defn- make-mainstore-sql
+  [coll]
+  (->> (sproto/get-mainstore-tablename coll)
+       (format "CREATE TABLE %s (
+                 id uuid UNIQUE PRIMARY KEY,
+                 data json,
+                 revision uuid,
+                 created_at timestamp with time zone);")))
+
+(defn- make-revisions-sql
+  [coll]
+  (->> (sproto/get-revisions-tablename coll)
+       (format "CREATE TABLE %s (
+                 id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
+                 data json,
+                 revision uuid DEFAULT uuid_generate_v1(),
+                 created_at timestamp with time zone);")))
+
+(defn- make-persist-collection-sql
+  [db coll]
+  ["INSERT INTO mammutdb_collections (name, database) VALUES (?, ?);"
+   (sproto/get-collection-name coll)
+   (sproto/get-database-name db)])
+
 (defn create
-  [database name con]
-  (let [sql1 "CREATE TABLE %s (
-               id uuid UNIQUE PRIMARY KEY,
-               data json,
-               revision uuid,
-               created_at timestamp with time zone);"
-        sql2 "CREATE TABLE %s (
-               id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
-               data json,
-               revision uuid DEFAULT uuid_generate_v1(),
-               created_at timestamp with time zone);"
-        sql3 "INSERT INTO mammutdb_collections (name, database)
-              VALUES (?, ?);"
-        c    (->collection database name)
-        sql2 (format sql2 (tcoll/get-revisions-tablename c))
-        sql1 (format sql1 (tcoll/get-mainstore-tablename c))]
-    (m/mlet [safe? (safe-name? name)]
-      (serr/catch-sqlexception
-       (j/execute! con sql1)
-       (j/execute! con sql2)
-       (j/execute-prepared! con [sql3 name (tdb/get-name database)])
-       (m/return c)))))
+  [db name con]
+  (m/mlet [safe?   (safe-name? name)
+           :let    [coll (stypes/->doc-collection db name)
+                    sql1 (make-mainstore-sql coll)
+                    sql2 (make-revisions-sql coll)
+                    sql3 (make-persist-collection-sql db coll)]]
+    (serr/catch-sqlexception
+     (j/execute! con sql1)
+     (j/execute! con sql2)
+     (j/execute-prepared! con sql3)
+     (m/return coll))))
 
 (defn get-by-name
   "Get collection by its name."
-  [database name con]
-  (let [sql "SELECT * FROM mammutdb_collections
-             WHERE name = ? AND database = ?"
-        sql [sql name (tdb/get-name database)]]
-    (m/mlet [rev (sconn/query-first con sql)]
-      (if rev
-        (m/return (->collection database name))
-        (e/error :collection-not-exists
-                 (format "Collection '%s' does not exists" name))))))
+  [db name con]
+  (m/mlet [safe? (safe-name? name)
+           :let  [sql ["SELECT * FROM mammutdb_collections
+                        WHERE name = ? AND database = ?"
+                       name
+                       (sproto/get-database-name db)]]
+           rev   (sconn/query-first con sql)]
+    (if rev
+      (m/return (stypes/->doc-collection db name))
+      (e/error :collection-not-exists
+               (format "Collection '%s' does not exists" name)))))
 
 (defn drop!
   [coll con]
-  (tcoll/drop! coll con))
+  (sproto/drop! coll con))

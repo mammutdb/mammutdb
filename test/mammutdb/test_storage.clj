@@ -4,6 +4,7 @@
             [jdbc.core :as j]
             [mammutdb.storage.collection :as scoll]
             [mammutdb.storage.database :as sdb]
+            [mammutdb.storage.types :as stypes]
             [mammutdb.storage.connection :as sconn]
             [mammutdb.storage.migrations :as migrations]
             [mammutdb.config :as config]))
@@ -32,14 +33,14 @@
       (let [mr (sdb/create "testdb" con)
             r  (t/from-either mr)]
         (is (t/right? mr))
-        (is (= r (sdb/->database "testdb"))))
+        (is (= r (stypes/->database "testdb"))))
 
       (let [mr (sdb/exists? "testdb" con)
             r  (t/from-either mr)]
         (is (t/right? mr))
         (is r))
 
-      (sdb/drop! (sdb/->database "testdb") con)))
+      (sdb/drop! (stypes/->database "testdb") con)))
 
   (testing "Create duplicate database"
     (with-open [con (j/make-connection @sconn/datasource)]
@@ -49,7 +50,7 @@
         (is (t/right? mr1))
         (is (t/left? mr2)))
       ;; TODO: test error code
-      (sdb/drop! (sdb/->database "testdb") con)))
+      (sdb/drop! (stypes/->database "testdb") con)))
 )
 
 (deftest collections
@@ -67,7 +68,7 @@
 
   (testing "Not existence of one collection"
     (with-open [con (j/make-connection @sconn/datasource)]
-      (let [db (sdb/->database "testdb")
+      (let [db (stypes/->database "testdb")
             mr (scoll/exists? db "notexistent" con)
             r  (t/from-either mr)]
         (is (t/left? mr))
@@ -75,20 +76,20 @@
 
   (testing "Create/Delete collection"
     (with-open [con (j/make-connection @sconn/datasource)]
-      (let [db (sdb/->database "testdb")]
+      (let [db (stypes/->database "testdb")]
         (let [mr (scoll/create db "testcoll" con)
               r  (t/from-either mr)]
           (is (t/right? mr))
-          (is (= r (scoll/->collection db "testcoll"))))
+          (is (= r (stypes/->doc-collection db "testcoll"))))
         (let [mr (scoll/exists? db "testcoll" con)
               r  (t/from-either mr)]
           (is (t/right? mr))
           (is r))
-        (scoll/drop! (scoll/->collection db "testcoll") con))))
+        (scoll/drop! (stypes/->doc-collection db "testcoll") con))))
 
   (testing "Created duplicate collection"
     (with-open [con (j/make-connection @sconn/datasource)]
-      (let [db (sdb/->database "testdb")]
+      (let [db (stypes/->database "testdb")]
         (let [mr1 (scoll/create db "testcoll" con)
               mr2 (scoll/create db "testcoll" con)
               r   (t/from-either mr2)]
@@ -96,7 +97,7 @@
           (is (t/left? mr2))
           (is (= (:error-code r) :collection-exists))
           (is (= (-> r :error-ctx :sqlstate) :42P07)))
-        (scoll/drop! (scoll/->collection db "testcoll") con))))
+        (scoll/drop! (stypes/->doc-collection db "testcoll") con))))
 )
 
 

@@ -29,58 +29,54 @@
             [clojure.string :as str]
             [mammutdb.core.edn :as edn]
             [mammutdb.core.errors :as e]
-            [mammutdb.types.database :as tdb]
-            [mammutdb.storage.collection :as scoll]
+            [mammutdb.storage.types :as stypes]
+            [mammutdb.storage.protocols :as sproto]
             [mammutdb.storage.json :as json]
             [mammutdb.storage.errors :as serr]
-            [mammutdb.storage.connection :as sconn]))
+            [mammutdb.storage.connection :as sconn])
+  (:import mammutdb.storage.types.Database))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def ^:dynamic *database-safe-rx* #"[\w\_\-]+")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Types
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype Database [name]
-  Object
-  (toString [_]
-    (with-out-str
-      (print [(str/lower-case name)])))
+(extend-type Database
+  sproto/Database
+  (get-database-name [db]
+    (-> (.-name db)
+        (str/lower-case)))
 
-  (equals [_ other]
-    (= name (.-name other)))
-
-  tdb/Database
-  (get-name [_]
-    (str/lower-case name))
-
+  ;; TODO at this momment does not distinguish between
+  ;; collection types and always return doc collections.
   (get-collections [db con]
     (let [sql ["SELECT name FROM mammutdb_collections
                 WHERE database = ? ORDER BY name"
-               (tdb/get-name db)]]
+               (sproto/get-database-name db)]]
       (m/mlet [results (sconn/query con sql)]
-        (-> (fn [record] (scoll/->collection db (:name record)))
+        (-> (fn [record] (stypes/->doc-collection db (:name record)))
             (mapv results)
             (m/return)))))
 
+  sproto/Droppable
   (drop! [db con]
-    ;; Drop all collections
     (let [sql1 ["DELETE FROM mammutdb_databases WHERE name = ?;"
-                (tdb/get-name db)]]
+                (sproto/get-database-name db)]]
       (serr/catch-sqlexception
        (j/execute-prepared! con sql1)
        (t/right)))))
-
-(alter-meta! #'->Database assoc :no-doc true :private true)
-
-(defn ->database
-  "Default constructor for database instances."
-  [^String name]
-  (Database. name))
 
 (defn safe-name?
   "Parse collection name and return a safe
   string or nil."
   [name]
-  (if (re-matches tdb/*database-safe-rx* name)
+  (if (re-matches *database-safe-rx* name)
     (t/right true)
     (e/error :database-name-unsafe)))
 
@@ -88,23 +84,23 @@
   "Check if database with given name, are
   previously created."
   [name con]
-  (let [sql "SELECT EXISTS(SELECT * FROM mammutdb_databases WHERE name = ?);"
-        sql [sql name]]
-    (m/mlet [res (sconn/query-first con sql)]
-      (if (:exists res)
-        (m/return (->database name))
-        (e/error :database-not-exists
-                 (format "Database '%s' does not exists" name))))))
+  (m/mlet [safe (safe-name? name)
+           :let [sql ["SELECT EXISTS(SELECT * FROM mammutdb_databases WHERE name = ?);" name]]
+           res  (sconn/query-first con sql)]
+    (if (:exists res)
+      (m/return (stypes/->database name))
+      (e/error :database-not-exists
+               (format "Database '%s' does not exists" name)))))
 
 (defn create
   [name con]
-  (let [sql ["INSERT INTO mammutdb_databases (name) VALUES (?)" name]]
-    (m/mlet [safe? (safe-name? name)]
-      (serr/catch-sqlexception
-       (j/execute-prepared! con sql)
-       (t/right (->database name))))))
+  (m/mlet [safe (safe-name? name)
+           :let [sql ["INSERT INTO mammutdb_databases (name) VALUES (?)" name]]]
+    (serr/catch-sqlexception
+     (j/execute-prepared! con sql)
+     (t/right (stypes/->database name)))))
 
 (defn drop!
   [db con]
-  (tdb/drop! db con))
+  (sproto/drop! db con))
 

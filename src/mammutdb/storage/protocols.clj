@@ -22,20 +22,25 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.types.collection)
+(ns mammutdb.storage.protocols)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Constants
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def ^:dynamic *collection-safe-rx* #"[\w\_\-]+")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Protocols
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defprotocol Database
+  "Any database representation type
+  should implement this protocol."
+  (get-database-name [_] "Get database name")
+  (get-collections [_ conn] "Get collections."))
 
 (defprotocol Collection
+  "Any collection representation type
+  should implement this protocol."
+  (get-collection-name [_] "Get collection name")
+  (get-database [_] "Get database of collection.")
   (get-mainstore-tablename [_] "Get main storage tablename for collection")
-  (get-revisions-tablename [_] "Get rev storage tablename for collection")
-  (get-database [_] "Get database of this collection.")
-  (drop! [_ con] "Drop collection"))
+  (get-revisions-tablename [_] "Get rev storage tablename for collection"))
+
+(defprotocol Droppable
+  "Any thing that can be droppable
+  should implement this protocol."
+  (drop! [_ conn] "Drop element"))
+
+

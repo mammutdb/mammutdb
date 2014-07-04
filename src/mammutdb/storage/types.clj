@@ -22,19 +22,51 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.types.database)
+(ns mammutdb.storage.types
+  (:require [clojure.string :as str]
+            [mammutdb.storage.protocols :as sproto]))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Constants
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(deftype Database [name]
+  java.lang.Object
+  (toString [_]
+    (with-out-str
+      (print [(str/lower-case name)])))
 
-(def ^:dynamic *database-safe-rx* #"[\w\_\-]+")
+  (equals [_ other]
+    (= name (.-name other))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Protocols
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(deftype DocumentCollection [database name]
+  java.lang.Object
+  (toString [_]
+    (with-out-str
+      (print [(sproto/get-database-name database) name])))
 
-(defprotocol Database
-  (get-name [_] "Get database name.")
-  (get-collections [_ con] "Get all collections of database.")
-  (drop! [_ con] "Drop database."))
+  (equals [_ other]
+    (and (= name (.-name other))
+         (= database (.database other)))))
+
+;; (deftype JsonDocument [id rev data createdat]
+;;   java.lang.Object
+;;   (toString [_]
+;;     (with-out-str
+;;       (print [id rev])))
+
+;;   (equals [_ other]
+;;     (and (= id (.-id other))
+;;          (= rev (.-rev other)))))
+
+(alter-meta! #'->Database assoc :no-doc true :private true)
+(alter-meta! #'->DocumentCollection assoc :no-doc true :private true)
+;; (alter-meta! #'->JsonDocument assoc :no-doc true :private true)
+
+
+(defn ->database
+  "Default constructor for database instance."
+  [^String name]
+  (Database. name))
+
+(defn ->doc-collection
+  "Default constructor for document based collection."
+  [^Database db ^String name]
+  (DocumentCollection. db name))
+
