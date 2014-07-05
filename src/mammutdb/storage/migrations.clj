@@ -86,7 +86,7 @@
   []
   (with-open [conn (j/make-connection @c/datasource)]
     (when-not (initialized? conn)
-      (let [sql (-> (edn/from-resource "sql/migrations.edn")
+      (let [sql (-> (edn/from-resource "migrations.edn")
                     (:initial)
                     (:create-migrations-table))]
         (tx/with-transaction conn
