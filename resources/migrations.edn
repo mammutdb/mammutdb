@@ -20,12 +20,6 @@
          UNIQUE (name, database)
        );"
 
-      ;; :metadata-create-table
-      ;; "CREATE TABLE mammutdb_metadata (
-      ;;    type varchar(255) UNIQUE PRIMARY KEY,
-      ;;    value json DEFAULT '{}'::json
-      ;;  );"
-
       :users-create-table
       "CREATE TABLE mammutdb_users (
          id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,

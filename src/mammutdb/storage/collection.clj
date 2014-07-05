@@ -55,16 +55,19 @@
                  id uuid UNIQUE PRIMARY KEY,
                  data json,
                  revision uuid,
-                 created_at timestamp with time zone);")))
+                 created_at timestamp with time zone
+                );")))
 
 (defn- make-revisions-sql
   [coll]
   (->> (sproto/get-revisions-tablename coll)
        (format "CREATE TABLE %s (
-                 id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
+                 id uuid DEFAULT uuid_generate_v1(),
                  data json,
                  revision uuid DEFAULT uuid_generate_v1(),
-                 created_at timestamp with time zone);")))
+                 created_at timestamp with time zone,
+                 UNIQUE (id, revision)
+                );")))
 
 (defn- make-persist-collection-sql
   [db coll type]

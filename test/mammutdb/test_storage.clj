@@ -2,8 +2,11 @@
   (:require [clojure.test :refer :all]
             [cats.types :as t]
             [jdbc.core :as j]
+            [clj-time.core :as jt]
+            [clj-time.coerce :as jc]
             [mammutdb.storage.collection :as scoll]
             [mammutdb.storage.database :as sdb]
+            [mammutdb.storage.document :as sdoc]
             [mammutdb.storage.types :as stypes]
             [mammutdb.storage.connection :as sconn]
             [mammutdb.storage.migrations :as migrations]
@@ -100,7 +103,30 @@
         (scoll/drop! (scoll/->collection db "testcoll" :json) conn))))
 )
 
+(deftest documents
+  (config/setup-config "test/testconfig.edn")
+  (migrations/bootstrap)
 
+  (testing "Json type document factory"
+    (let [db  (sdb/->database "testdb")
+          cl  (scoll/->collection db "testcoll" :json)
+          doc (sdoc/->document cl 1 1 {} nil)]
+      (is (instance? mammutdb.storage.document.JsonDocument doc))))
 
+  (testing "Json document persistence"
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [db   (sdb/->database "testdb")
+            coll (t/from-either (scoll/create! db "testcoll" :json conn))
+            doc1 (sdoc/->document coll nil nil {:foo 1} nil)
+            doc2 (t/from-either (sdoc/persist! coll doc1 conn))
+            doc3 (t/from-either (sdoc/persist! coll doc2 conn))]
+        (is (= (.-data doc1) (.-data doc2)))
+        (is (= (.-data doc1) (.-data doc3)))
+        (is (= (.-id doc2) (.-id doc3)))
+        (is (not= (.-rev doc2) (.-rev doc3)))
+        (is (<
+             (jc/to-long (.-createdat doc2))
+             (jc/to-long (.-createdat doc3)))))))
+)
 
 

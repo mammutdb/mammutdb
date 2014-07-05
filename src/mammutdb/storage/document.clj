@@ -29,8 +29,8 @@
             [clj-time.core :as jt]
             [clj-time.coerce :as jc]
             [swiss.arrows :refer [-<>]]
-            [mammutdb.core.error :as err]
             [mammutdb.storage.json :as json]
+            [mammutdb.storage.protocols :as sproto]
             [mammutdb.storage.collection :as scoll]
             [mammutdb.storage.connection :as sconn])
   (:import mammutdb.storage.collection.JsonDocumentCollection))
@@ -45,7 +45,8 @@
   java.lang.Object
   (toString [_]
     (with-out-str
-      (print [id rev])))
+      (print [id rev data createdat])))
+
   (equals [_ other]
     (and (= id (.-id other))
          (= rev (.-rev other))))
@@ -63,6 +64,12 @@
   (get-database [doc]
     (sproto/get-database (.-collection doc))))
 
+;; The following code is the concrete implementation
+;; of persist! for json based documents. At this momment
+;; it located on this file but in future it can be moved
+;; to own namespace, allowing so support multiple
+;; document types.
+
 (defn- makesql-persist-document-on-mainstore
   [coll doc]
   (let [createdat (jc/to-sql-time (.-createdat doc))
@@ -74,8 +81,8 @@
 
 (defn- makesql-update-document-on-mainstore
   [coll doc]
-  (let [createdat (jc/to-sql-time (.-createdat d))
-        data      (json/from-native (.-data d))]
+  (let [createdat (jc/to-sql-time (.-createdat doc))
+        data      (json/from-native (.-data doc))]
     (-<> (sproto/get-mainstore-tablename coll)
          (format "UPDATE %s SET revision = ?, created_at = ?,
                   data = ? WHERE id = ?;" <>)
@@ -92,19 +99,24 @@
            (fn [& args] (m/return doc)))))
 
 (defn- persist-to-revisions
-  [coll doc timestamp conn]
-  (let [createdat (jc/to-sql-time timestamp)
-        data      (json/from-native (.-data doc))
-        sql       (-<> (sproto/get-revisions-tablename coll)
-                       (format "INSERT INTO %s (data, created_at) VALUES (?, ?);" <>)
-                       (vector <> (.-data doc) createdat))]
+  [coll doc timestamp update? conn]
+  (let [createdat  (jc/to-sql-time timestamp)
+        data       (json/from-native (.-data doc))
+        tablename  (sproto/get-revisions-tablename coll)
+        sql-create (-<> tablename
+                        (format "INSERT INTO %s (data, created_at) VALUES (?,?);" <>)
+                        (vector <> data createdat))
+        sql-update (-<> tablename
+                        (format "INSERT INTO %s (id, data, created_at) VALUES (?,?,?);" <>)
+                        (vector <> (.-id doc) data createdat))
+        sql        (if update? sql-update sql-create)]
     (m/mlet [res  (sconn/execute-prepared! conn sql {:returning [:id :revision]})
              :let [res (first res)]]
-      (m/return (->json-document coll
-                                 (:id res)
-                                 (:revision res)
-                                 (.-data d)
-                                 timestamp)))))
+      (m/return (sproto/->document coll
+                                   (:id res)
+                                   (:revision res)
+                                   (.-data doc)
+                                   timestamp)))))
 
 (extend-type JsonDocumentCollection
   sproto/DocumentStore
@@ -113,13 +125,13 @@
                       (format "SELECT * FROM %s WHERE id = ?;" <>)
                       (vector <> id)
                       (sconn/query-first conn <>))]
-      (m/return (sproto/->record->document coll rec))))
+      (m/return (sproto/record->document coll rec))))
 
   (persist! [coll doc conn]
     (let [timestamp (jt/now)
           forupdate (not (nil? (.-id doc)))]
       (m/>>= (t/just doc)
-             #(persist-to-revisions coll % timestamp conn)
+             #(persist-to-revisions coll % timestamp forupdate conn)
              #(persist-to-mainstore coll % timestamp forupdate conn))))
 
   (record->document [coll rec]
@@ -142,6 +154,6 @@
   [& args]
   (apply sproto/persist! args))
 
-(defn get-by-id!
+(defn get-by-id
   [& args]
-  (apply sproto/get-by-id! args))
+  (apply sproto/get-by-id args))
