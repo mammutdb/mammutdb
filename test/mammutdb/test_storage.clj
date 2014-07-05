@@ -126,7 +126,8 @@
         (is (not= (.-rev doc2) (.-rev doc3)))
         (is (<
              (jc/to-long (.-createdat doc2))
-             (jc/to-long (.-createdat doc3)))))))
+             (jc/to-long (.-createdat doc3))))
+        (scoll/drop! coll conn))))
 )
 
 
