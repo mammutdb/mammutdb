@@ -36,7 +36,7 @@
 
 (def secret-key
   (delay (let [cfg @config/*config*]
-           (t/just (:secret-key cfg)))))
+           (:secret-key cfg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Private Api
@@ -54,17 +54,16 @@
 (defn- make-access-token
   "Given a userid, return valid access token."
   [^long userid]
-  (m/<$> #(jws/sign {:userid userid} %) @secret-key))
+  (t/just (jws/sign {:userid userid} @secret-key)))
 
 (defn- validate-access-token
   "Given a token, validates it and return user id."
   [^String token]
-  (m/mlet [secretkey @secret-key]
-    (let [data   (jws/unsign token secretkey)
-          userid (:userid data)]
-      (if userid
-        (t/right userid)
-        (e/error :wrong-authentication)))))
+  (let [data   (jws/unsign token @secret-key)
+        userid (:userid data)]
+    (if userid
+      (t/right userid)
+      (e/error :wrong-authentication))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public Api
