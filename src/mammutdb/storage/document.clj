@@ -28,129 +28,120 @@
             [jdbc.core :as j]
             [clj-time.core :as jt]
             [clj-time.coerce :as jc]
-            [mammutdb.core.edn :as edn]
+            [swiss.arrows :refer [-<>]]
             [mammutdb.core.error :as err]
-            [mammutdb.storage.collections :as scoll]
-            [mammutdb.storage.json :as json]))
+            [mammutdb.storage.json :as json]
+            [mammutdb.storage.collection :as scoll]
+            [mammutdb.storage.connection :as sconn])
+  (:import mammutdb.storage.collection.JsonDocumentCollection))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; SQL Readers
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Main Implementation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private sql-ops
-  (delay (edn/from-resource "sql/ops.edn")))
+;; TODO: implement Droppable protocol
 
-(def ^:private sql-queries
-  (delay (edn/from-resource "sql/query.edn")))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Types
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(deftype Document [id rev data createdat]
-  Object
+(deftype JsonDocument [collection id rev data createdat]
+  java.lang.Object
   (toString [_]
     (with-out-str
       (print [id rev])))
-
   (equals [_ other]
     (and (= id (.-id other))
-         (= rev (.-rev other)))))
+         (= rev (.-rev other))))
 
-(alter-meta! #'->Document assoc :no-doc true :private true)
+  sproto/Document
+  (document->record [doc]
+    {:id (.-id doc)
+     :revision (.-rev doc)
+     :data (.-data doc)})
 
-(defn ->document
-  "Default constructor for document type."
-  ([data]
-     (Document. nil nil data nil))
-  ([id rev data created-at]
-     (Document. id rev data created-at)))
+  (get-collection [doc]
+    (.-collection doc))
 
-(defn record->document
-  [{:keys [id revision data created_at] :as record}]
-  (->> (jc/from-sql-time created_at)
-       (->document id revision data)))
+  sproto/DatabaseMember
+  (get-database [doc]
+    (sproto/get-database (.-collection doc))))
 
-(defn document->record
-  [doc]
-  {:id (.-id doc)
-   :revision (.-rev doc)
-   :data (.-data doc)})
+(defn- makesql-persist-document-on-mainstore
+  [coll doc]
+  (let [createdat (jc/to-sql-time (.-createdat doc))
+        data      (json/from-native (.-data doc))]
+    (-<> (sproto/get-mainstore-tablename coll)
+         (format "INSERT INTO %s (id, data, revision, created_at)
+                  VALUES (?, ?, ?, ?);" <>)
+         (vector <> (.-id doc) data (.-rev doc) createdat))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; SQL Constructors
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn makesql-get-document-by-id
-  "Build sql query for obtain document by its id."
-  [c id]
-  (let [tablename (scoll/get-mainstore-tablename c)]
-    (-> (format (:document-by-id @sql-queries) tablename)
-        (vector id)
-        (t/right))))
-
-(defn makesql-persist-document-on-mainstore
-  [c d]
+(defn- makesql-update-document-on-mainstore
+  [coll doc]
   (let [createdat (jc/to-sql-time (.-createdat d))
-        data      (json/from-native (.-data d))
-        tablename (scoll/get-mainstore-tablename c)]
-    (-> (format (:persist-document-on-mainstore @sql-ops) tablename)
-        (vector (.-id d) data (.-rev d) createdat)
-        (t/right))))
-
-(defn makesql-persist-document-on-revisions
-  [c data t]
-  (let [createdat (jc/to-sql-time t)
-        data      (json/from-native data)
-        tablename (scoll/get-revisions-tablename c)]
-    (-> (format (:persist-document-on-revisions @sql-ops) tablename)
-        (vector data createdat)
-        (t/right))))
-
-(defn makesql-update-document-on-mainstore
-  [c d]
-  (let [createdat (jc/to-sql-time (.-createdat d))
-        data      (json/from-native (.-data d))
-        tablename (scoll/get-mainstore-tablename c)]
-    (-> (format (:update-document-on-mainstore @sql-ops) tablename)
-        (vector (.-rev d) createdat data (.-id d))
-        (t/right))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Documents crud
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn get-by-id
-  [con c id]
-  (err/catch-to-either
-   (m/mlet [sql (makesql-get-document-by-id c id)
-            rec (err/wrap-to-either (j/query-first con sql))]
-     (m/return (record->document rec)))))
-
-(defn- persist-to-revisions
-  [con c d t]
-  (m/mlet [sql (makesql-persist-document-on-revisions c (.-data d) t)
-           res (err/wrap-to-either
-                (j/execute-prepared! con sql {:returning [:id :revision]}))]
-    (let [res (first res)]
-      (m/return (->document (:id res) (:revision res) (.-data d) t)))))
+        data      (json/from-native (.-data d))]
+    (-<> (sproto/get-mainstore-tablename coll)
+         (format "UPDATE %s SET revision = ?, created_at = ?,
+                  data = ? WHERE id = ?;" <>)
+         (vector <> (.-rev doc) createdat data (.-id doc)))))
 
 (defn- persist-to-mainstore
-  [conn c t update? d]
-  (err/catch-to-either
-   (m/mlet [sql (if update?
-                  (makesql-update-document-on-mainstore c d)
-                  (makesql-persist-document-on-revisions c d))
-            res (err/wrap-to-either
-                 (j/execute-prepared! conn sql))]
-     (m/return d))))
+  [coll doc timestamp update? conn]
+  (let [createdat (jc/to-sql-time timestamp)
+        data      (json/from-native (.-data doc))
+        sql       (if update?
+                    (makesql-update-document-on-mainstore coll doc)
+                    (makesql-persist-document-on-mainstore coll doc))]
+    (m/>>= (sconn/execute-prepared! conn sql)
+           (fn [& args] (m/return doc)))))
 
-(defn persist
-  "Persist document in a collection."
-  [conn c d]
-  (err/catch-to-either
-   (let [timestamp (jt/now)
-         forupdate (not (nil? (.-id d)))]
-     (m/>>= (t/right d)
-            (partial persist-to-revisions conn c timestamp)
-            (partial persist-to-mainstore conn c timestamp forupdate)))))
+(defn- persist-to-revisions
+  [coll doc timestamp conn]
+  (let [createdat (jc/to-sql-time timestamp)
+        data      (json/from-native (.-data doc))
+        sql       (-<> (sproto/get-revisions-tablename coll)
+                       (format "INSERT INTO %s (data, created_at) VALUES (?, ?);" <>)
+                       (vector <> (.-data doc) createdat))]
+    (m/mlet [res  (sconn/execute-prepared! conn sql {:returning [:id :revision]})
+             :let [res (first res)]]
+      (m/return (->json-document coll
+                                 (:id res)
+                                 (:revision res)
+                                 (.-data d)
+                                 timestamp)))))
+
+(extend-type JsonDocumentCollection
+  sproto/DocumentStore
+  (get-by-id [coll id conn]
+    (m/mlet [rec (-<> (sproto/get-mainstore-tablename coll)
+                      (format "SELECT * FROM %s WHERE id = ?;" <>)
+                      (vector <> id)
+                      (sconn/query-first conn <>))]
+      (m/return (sproto/->record->document coll rec))))
+
+  (persist! [coll doc conn]
+    (let [timestamp (jt/now)
+          forupdate (not (nil? (.-id doc)))]
+      (m/>>= (t/just doc)
+             #(persist-to-revisions coll % timestamp conn)
+             #(persist-to-mainstore coll % timestamp forupdate conn))))
+
+  (record->document [coll rec]
+    (let [{:keys [id revision data created_at]} rec]
+      (->> (jc/from-sql-time created_at)
+           (JsonDocument. coll id revision data))))
+
+  (->document [coll id rev data createdat]
+    (JsonDocument. coll id rev data createdat)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Aliases
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn ->document
+  [& args]
+  (apply sproto/->document args))
+
+(defn persist!
+  [& args]
+  (apply sproto/persist! args))
+
+(defn get-by-id!
+  [& args]
+  (apply sproto/get-by-id! args))

@@ -26,34 +26,6 @@
   (:require [clojure.string :as str]
             [mammutdb.storage.protocols :as sproto]))
 
-(deftype Database [name]
-  java.lang.Object
-  (toString [_]
-    (with-out-str
-      (print [(str/lower-case name)])))
-
-  (equals [_ other]
-    (= name (.-name other))))
-
-(deftype DocumentCollection [database name]
-  java.lang.Object
-  (toString [_]
-    (with-out-str
-      (print [(sproto/get-database-name database) name])))
-
-  (equals [_ other]
-    (and (= name (.-name other))
-         (= database (.database other)))))
-
-;; (deftype JsonDocument [id rev data createdat]
-;;   java.lang.Object
-;;   (toString [_]
-;;     (with-out-str
-;;       (print [id rev])))
-;;   (equals [_ other]
-;;     (and (= id (.-id other))
-;;          (= rev (.-rev other)))))
-
 (deftype User [id username password token]
   Object
   (equals [_ other]
@@ -63,20 +35,7 @@
     (with-out-str
       (print [id username]))))
 
-(alter-meta! #'->Database assoc :no-doc true :private true)
-(alter-meta! #'->DocumentCollection assoc :no-doc true :private true)
 (alter-meta! #'->User assoc :no-doc true :private true)
-;; (alter-meta! #'->JsonDocument assoc :no-doc true :private true)
-
-(defn ->database
-  "Default constructor for database instance."
-  [^String name]
-  (Database. name))
-
-(defn ->doc-collection
-  "Default constructor for document based collection."
-  [^Database db ^String name]
-  (DocumentCollection. db name))
 
 (defn user?
   [v]

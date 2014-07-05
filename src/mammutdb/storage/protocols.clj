@@ -30,13 +30,33 @@
   (get-database-name [_] "Get database name")
   (get-collections [_ conn] "Get collections."))
 
+(defprotocol DatabaseMember
+  (get-database [_] "Get associated database with current instance."))
+
 (defprotocol Collection
   "Any collection representation type
   should implement this protocol."
   (get-collection-name [_] "Get collection name")
-  (get-database [_] "Get database of collection.")
   (get-mainstore-tablename [_] "Get main storage tablename for collection")
   (get-revisions-tablename [_] "Get rev storage tablename for collection"))
+
+(defprotocol CollectionStore
+  (collection-exists-by-name? [_ name conn] "Check if collection exists.")
+  (get-collection-by-name [_ name conn] "Get collection.")
+  (->collection [_ name type] "Collection instance constructor.")
+  (create-collection! [_ name type conn] "Create collection."))
+
+(defprotocol Document
+  "Any document representation type
+  should implement this protocol."
+  (document->record [doc] "Convert document to record")
+  (get-collection [doc] "Get associated collection"))
+
+(defprotocol DocumentStore
+  (record->document [_ rec] "Buld document from record")
+  (->document [_ id rev data createdat] "Build document from data.")
+  (get-by-id [_ id conn] "Get document by id")
+  (persist! [_ doc conn] "Persist document"))
 
 (defprotocol Droppable
   "Any thing that can be droppable

@@ -29,12 +29,11 @@
             [clojure.string :as str]
             [mammutdb.core.edn :as edn]
             [mammutdb.core.errors :as e]
-            [mammutdb.storage.types :as stypes]
+            ;; [mammutdb.storage.types :as stypes]
             [mammutdb.storage.protocols :as sproto]
             [mammutdb.storage.json :as json]
             [mammutdb.storage.errors :as serr]
-            [mammutdb.storage.connection :as sconn])
-  (:import mammutdb.storage.types.Database))
+            [mammutdb.storage.connection :as sconn]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -46,7 +45,15 @@
 ;; Types
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(extend-type Database
+(deftype Database [name]
+  java.lang.Object
+  (toString [_]
+    (with-out-str
+      (print [(str/lower-case name)])))
+
+  (equals [_ other]
+    (= name (.-name other)))
+
   sproto/Database
   (get-database-name [db]
     (-> (.-name db)
@@ -59,7 +66,7 @@
       (m/mlet [results (sconn/query con sql)]
         (-> (fn [{:keys [name type]}]
               (case (keyword type)
-                :document (stypes/->doc-collection db name)))
+                :json (sproto/->collection db name :json)))
             (mapv results)
             (m/return)))))
 
@@ -70,6 +77,14 @@
       (serr/catch-sqlexception
        (j/execute-prepared! con sql1)
        (t/right)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Aliases
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn ->database
+  [name]
+  (Database. name))
 
 (defn safe-name?
   "Parse collection name and return a safe
@@ -87,7 +102,7 @@
            :let [sql ["SELECT EXISTS(SELECT * FROM mammutdb_databases WHERE name = ?);" name]]
            res  (sconn/query-first con sql)]
     (if (:exists res)
-      (m/return (stypes/->database name))
+      (m/return (->database name))
       (e/error :database-not-exists
                (format "Database '%s' does not exists" name)))))
 
@@ -97,7 +112,7 @@
            :let [sql ["INSERT INTO mammutdb_databases (name) VALUES (?)" name]]]
     (serr/catch-sqlexception
      (j/execute-prepared! con sql)
-     (t/right (stypes/->database name)))))
+     (t/right (->database name)))))
 
 (defn drop!
   [db con]

@@ -55,6 +55,12 @@
   [con sql]
   (serr/wrap (j/query-first con sql)))
 
+(defn execute-prepared!
+  ([conn sql]
+     (serr/wrap (j/execute-prepared! conn sql)))
+  ([conn sql opts]
+     (serr/wrap (j/execute-prepared! conn sql opts))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; State Monad Jdbc operatiosn (not used at this momment)

@@ -1,9 +1,0 @@
-{
- :persist-document-on-mainstore
- "INSERT INTO %s (id, data, revision, created_at) VALUES (?, ?, ?, ?);"
-
- :persist-document-on-revisions
- "INSERT INTO %s (data, created_at) VALUES (?, ?);"
-
- :update-document-on-mainstore
- "UPDATE %s SET revision = ?, created_at = ?, data = ? WHERE id = ?;"}

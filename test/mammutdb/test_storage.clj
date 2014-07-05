@@ -22,35 +22,35 @@
       (is (= (:error-code i) :database-name-unsafe))))
 
   (testing "Not existence of database"
-    (with-open [con (j/make-connection @sconn/datasource)]
-      (let [mr (sdb/exists? "notexistsdb" con)
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [mr (sdb/exists? "notexistsdb" conn)
             r  (t/from-either mr)]
         (is (t/left? mr))
         (is (= (:error-code r) :database-not-exists)))))
 
   (testing "Create/Delete database"
-    (with-open [con (j/make-connection @sconn/datasource)]
-      (let [mr (sdb/create! "testdb" con)
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [mr (sdb/create! "testdb" conn)
             r  (t/from-either mr)]
         (is (t/right? mr))
-        (is (= r (stypes/->database "testdb"))))
+        (is (= r (sdb/->database "testdb"))))
 
-      (let [mr (sdb/exists? "testdb" con)
+      (let [mr (sdb/exists? "testdb" conn)
             r  (t/from-either mr)]
         (is (t/right? mr))
         (is r))
 
-      (sdb/drop! (stypes/->database "testdb") con)))
+      (sdb/drop! (sdb/->database "testdb") conn)))
 
   (testing "Create duplicate database"
-    (with-open [con (j/make-connection @sconn/datasource)]
-      (let [mr1 (sdb/create! "testdb" con)
-            mr2 (sdb/create! "testdb" con)
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [mr1 (sdb/create! "testdb" conn)
+            mr2 (sdb/create! "testdb" conn)
             r   (t/from-either mr2)]
         (is (t/right? mr1))
         (is (t/left? mr2)))
       ;; TODO: test error code
-      (sdb/drop! (stypes/->database "testdb") con)))
+      (sdb/drop! (sdb/->database "testdb") conn)))
 )
 
 (deftest collections
@@ -67,37 +67,37 @@
       (is (= (:error-code i) :collection-name-unsafe))))
 
   (testing "Not existence of one collection"
-    (with-open [con (j/make-connection @sconn/datasource)]
-      (let [db (stypes/->database "testdb")
-            mr (scoll/exists? db "notexistent" con)
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [db (sdb/->database "testdb")
+            mr (scoll/exists? db "notexistent" conn)
             r  (t/from-either mr)]
         (is (t/left? mr))
         (is (= (:error-code r) :collection-not-exists)))))
 
   (testing "Create/Delete collection"
-    (with-open [con (j/make-connection @sconn/datasource)]
-      (let [db (stypes/->database "testdb")]
-        (let [mr (scoll/create! :document db "testcoll" con)
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [db (sdb/->database "testdb")]
+        (let [mr (scoll/create! db "testcoll" :json conn)
               r  (t/from-either mr)]
           (is (t/right? mr))
-          (is (= r (stypes/->doc-collection db "testcoll"))))
-        (let [mr (scoll/exists? db "testcoll" con)
+          (is (= r (scoll/->collection db "testcoll" :json))))
+        (let [mr (scoll/exists? db "testcoll" conn)
               r  (t/from-either mr)]
           (is (t/right? mr))
           (is r))
-        (scoll/drop! (stypes/->doc-collection db "testcoll") con))))
+        (scoll/drop! (scoll/->collection db "testcoll" :json) conn))))
 
   (testing "Created duplicate collection"
-    (with-open [con (j/make-connection @sconn/datasource)]
-      (let [db (stypes/->database "testdb")]
-        (let [mr1 (scoll/create! :document db "testcoll" con)
-              mr2 (scoll/create! :document db "testcoll" con)
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [db (sdb/->database "testdb")]
+        (let [mr1 (scoll/create! db "testcoll" :json conn)
+              mr2 (scoll/create! db "testcoll" :json conn)
               r   (t/from-either mr2)]
           (is (t/right? mr1))
           (is (t/left? mr2))
           (is (= (:error-code r) :collection-exists))
           (is (= (-> r :error-ctx :sqlstate) :42P07)))
-        (scoll/drop! (stypes/->doc-collection db "testcoll") con))))
+        (scoll/drop! (scoll/->collection db "testcoll" :json) conn))))
 )
 
 
