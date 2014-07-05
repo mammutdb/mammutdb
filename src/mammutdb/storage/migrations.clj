@@ -34,7 +34,7 @@
 (declare migrations)
 
 (def ^:private sql-migrations
-  (delay (edn/from-resource "sql/migrations.edn")))
+  (delay (edn/from-resource "migrations.edn")))
 
 (defn- initialized?
   "Check if database layout is initialized or not."
