@@ -14,7 +14,7 @@
 
 (deftest databases
   ;; Setup
-  (config/setup-config "test/testconfig.edn")
+  (config/setup-config! "test/testconfig.edn")
   (migrations/bootstrap)
 
   (testing "Database name safety"
@@ -58,7 +58,7 @@
 
 (deftest collections
   ;; Setup
-  (config/setup-config "test/testconfig.edn")
+  (config/setup-config! "test/testconfig.edn")
   (migrations/bootstrap)
 
   (testing "Collections name safety"
@@ -104,7 +104,7 @@
 )
 
 (deftest documents
-  (config/setup-config "test/testconfig.edn")
+  (config/setup-config! "test/testconfig.edn")
   (migrations/bootstrap)
 
   (testing "Json type document factory"

@@ -24,16 +24,26 @@
 
 (ns mammutdb.cli
   "Main entry point for command line interface of mammutdb."
-  (:require [mammutdb.config :as conf]
-            [mammutdb.core.util :refer [exit]]
+  (:require [mammutdb.core.util :refer [exit]]
             [mammutdb.core.barrier :as barrier]
-            [mammutdb.storage.migrations :as migrations]
+            [mammutdb.storage.migrations :refer [migrations]]
+            [mammutdb.transports :refer [transport]]
+            [mammutdb.config :refer [configuration]]
+            [com.stuartsierra.component :as component]
             [cats.core :as m]
             [cats.types :as t]
             [clojure.string :as str]
             [clojure.java.io :as io]
             [clojure.tools.cli :refer [parse-opts]])
   (:gen-class))
+
+(defn system
+  "System constructor."
+  [confpath]
+  (component/system-map
+   :configuration (configuration confpath)
+   :migrations    (component/using (migrations) [:configuration])
+   :transport     (component/using (transport) [:configuration])))
 
 (def ^:private options
    [["-v" nil "Verbosity level"
@@ -48,16 +58,12 @@
   [summary]
   (str/join \newline ["Options:" summary]))
 
-(defn init
-  [path]
-  (let [cdl (barrier/count-down-latch 1)
-        ret (m/mlet [_ (conf/setup-config path)
-                     _ (migrations/bootstrap)]
-              (barrier/wait cdl)
-              (t/right nil))]
-    (if (t/right? ret)
-      (exit 0, nil)
-      (exit 1, (str (t/from-either ret))))))
+(defn initialize
+  [confpath]
+  (let [lock (barrier/count-down-latch 1)]
+    (System/setProperty "org.eclipse.jetty.LEVEL" "OFF")
+    (component/start (system confpath))
+    (barrier/wait lock)))
 
 (defn -main
   [& args]
@@ -65,6 +71,17 @@
     ;; TODO: configure logging depending on verbosity
     ;; level selected from command line.
     (cond
-     (:help options)    (exit 0 (usage summary))
-     (:config options)  (exit 0 (init (:config options)))
-     :else              (exit 1 (usage summary)))))
+     (:help options)
+     (do
+       (usage summary)
+       (exit 0))
+
+     (:config options)
+     (let [confpath (:config options)]
+       (initialize confpath)
+       (exit 0))
+
+     :else
+     (do
+       (usage summary)
+       (exit 0)))))

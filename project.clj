@@ -35,6 +35,7 @@
                  [cats "0.1.0-SNAPSHOT" :exclusions [org.clojure/clojure]]
                  [potemkin "0.3.4"]
                  [prismatic/schema "0.2.4"]
+                 [com.stuartsierra/component "0.2.1"]
                  ;; [org.apache.logging.log4j/log4j-core "2.0-rc1"]
                  ;; [org.apache.logging.log4j/log4j-api "2.0-rc1"]
 

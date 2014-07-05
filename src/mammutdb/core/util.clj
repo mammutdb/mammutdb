@@ -25,8 +25,5 @@
 (ns mammutdb.core.util
   "Generic utils namespace.")
 
-(defn exit [status msg]
-  (when (string? msg)
-    ;; TODO: replace print with future logger implementation
-    (println msg))
+(defn exit [status]
   (System/exit status))

@@ -21,3 +21,38 @@
 ;; THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+(ns mammutdb.transports.http
+  (:require [compojure.handler :refer [api]]
+            [ring.adapter.jetty9 :refer [run-jetty]]
+            [com.stuartsierra.component :as component]
+            [mammutdb.logging :refer [log]]
+            [mammutdb.core.barrier :as barrier]
+            [mammutdb.transports.http.routes :refer [main-routes]]))
+
+;; TODO: reimplement jetty logger and make it logging into
+;; mammutdb logger.
+;; Links:
+;; - http://stackoverflow.com/questions/2120370/jetty-how-to-disable-logging
+;; - http://download.eclipse.org/jetty/stable-9/apidocs/org/eclipse/jetty/util/log/Logger.html
+
+(defrecord HttpTransport [options stopfn]
+  component/Lifecycle
+  (start [component]
+    (log :info "Starting transport: http")
+    (let [app    (api main-routes)
+          opts   (assoc options
+                   :daemon? true
+                   :join false)
+          stopfn (run-jetty app opts)]
+      (assoc component
+        :app app
+        :stopfn stopfn)))
+
+  (stop [_]
+    (log :info "Stoping transport: http")
+    (stopfn)))
+
+(defn transport
+  [options]
+  (map->HttpTransport {:options options}))

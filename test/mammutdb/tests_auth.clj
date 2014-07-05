@@ -17,7 +17,7 @@
 (def password (hasher/make-password "secret"))
 
 (deftest auth
-  (config/setup-config "test/testconfig.edn")
+  (config/setup-config! "test/testconfig.edn")
 
   (testing "Authenticate credentials"
     (with-redefs [suser/get-user-by-username
@@ -38,7 +38,7 @@
 
 
 (deftest users
-  (config/setup-config "test/testconfig.edn")
+  (config/setup-config! "test/testconfig.edn")
   (migrations/bootstrap)
 
   (testing "Creating/Deleting users"

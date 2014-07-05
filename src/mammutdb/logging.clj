@@ -47,7 +47,7 @@
                 (format [^LogRecord rec]
                   (let [now     (time/now)
                         timestr (tfmt/unparse tf now)]
-                    (format "[%s] %s: %s" timestr (.getLevel rec) (.getMessage rec)))))]
+                    (format "[%s] %s: %s\n" timestr (.getLevel rec) (.getMessage rec)))))]
     (t/just fmtr)))
 
 (defn make-logger-handler

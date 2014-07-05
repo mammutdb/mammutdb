@@ -27,6 +27,8 @@
   (:require [clojure.java.io :as io]
             [jdbc.core :as j]
             [jdbc.transaction :as tx]
+            [com.stuartsierra.component :as component]
+            [mammutdb.logging :refer [log]]
             [mammutdb.config :as config]
             [mammutdb.core.edn :as edn]
             [mammutdb.storage.connection :as c]))
@@ -77,8 +79,8 @@
       (j/execute! conn (:databases-table sqldata)))))
 
 (def ^:private
-  migrations [["0001" migrate-v1]
-              ["0002" migrate-v2]])
+  migrations-list [["0001" migrate-v1]
+                   ["0002" migrate-v2]])
 
 (defn bootstrap
   "Initialize migrations system and create
@@ -92,7 +94,20 @@
         (tx/with-transaction conn
           (j/execute! conn sql))))
     (tx/with-transaction conn
-      (apply-migrations! conn migrations))))
+      (apply-migrations! conn migrations-list))))
+
+(defrecord Migrations []
+  component/Lifecycle
+  (start [component]
+    (log :info (str "Starting migrations " (:config component)))
+    (bootstrap)
+    component)
+
+  (stop [component]
+    (log :info "Stoping migrations")))
 
 
-
+(defn migrations
+  "Migrations component constructor."
+  []
+  (Migrations.))

@@ -34,7 +34,9 @@
             [mammutdb.storage.types :as stypes]
             [mammutdb.storage.connection :as sconn]))
 
-(def secret-key (delay (config/read-secret-key)))
+(def secret-key
+  (delay (let [cfg @config/*config*]
+           (t/just (:secret-key cfg)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Private Api

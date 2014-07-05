@@ -21,3 +21,11 @@
 ;; THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+(ns mammutdb.transports.http.routes
+  (:require [compojure.core :refer :all]
+            [compojure.handler :refer [api]]
+            [mammutdb.transports.http.controllers :as ctrl]))
+
+(defroutes main-routes
+  (ANY "/" [] ctrl/home-ctrl))

@@ -31,8 +31,14 @@
             [mammutdb.storage.errors :as serr]))
 
 (def ^:dynamic
-  datasource (delay (let [cfg (config/read-storage-config)]
-                      (pool/make-datasource-spec (t/from-either cfg)))))
+  datasource (delay (let [conf        @config/*config*
+                          storageconf (:storage conf)
+                          dbspec {:subprotocol "postgresql"
+                                  :subname (format "//%s:%s/%s"
+                                                   (:host storageconf)
+                                                   (:port storageconf)
+                                                   (:dbname storageconf))}]
+                      (pool/make-datasource-spec dbspec))))
 
 (defn new-connection
   "Monadic function for create new connection."

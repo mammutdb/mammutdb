@@ -27,77 +27,118 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.reader.edn :as edn]
+            [com.stuartsierra.component :as component]
+            [mammutdb.core.util :refer [exit]]
+            [mammutdb.logging :refer [log]]
+            [schema.core :as s]
             [cats.core :as m]
             [cats.types :as t]))
 
 ;; Dynamic var for configuration file path.
 ;; It just serves for testing purposes only.
-(def ^:dynamic *config-path* (atom nil))
+(def ^:dynamic *config* (atom {}))
 
-(defn- keywordize [s]
-  (-> (str/lower-case s)
-      (str/replace "_" "-")
-      (keyword)))
+(def ^:dynamic *schema*
+  {:transport {:path [s/Str]
+               :options {s/Any s/Any}}
+   :secret-key s/Str
+   :storage {:host s/Str
+             :port s/Int
+             :dbname s/Str}})
 
-(defn- read-system-properties
-  "Read system properties and return map."
-  []
-  (->> (System/getProperties)
-       (map (fn [[k v]] [(keywordize k) v]))
-       (into {})
-       (t/just)))
+(defn validate-config
+  [config]
+  (try
+    (s/validate *schema* config)
+    (catch Exception e
+      (log :error (.getMessage e))
+      (exit 1))))
 
-(defn get-configfile-path
-  "Get configuration file path."
-  []
-  (m/mlet [props (read-system-properties)]
-    (if-let [path (:mammutdb.cfg props @*config-path*)]
-      (t/right path)
-      (t/left "Configuration file not specified."))))
-
-(defn- read-config-impl
+(defn read-config
   "Read config from file and return it."
   [path]
-  (if (.exists (io/as-file path))
-    (t/right (edn/read-string (slurp path)))
-    (t/left (format "Config file %s not found" path))))
+  (try
+    (edn/read-string (slurp path))
+    (catch Exception e
+      (log :error (format "Config file %s not found" (.toString e)))
+      (exit 1))))
 
-(def read-config (memoize read-config-impl))
-
-(defn read-transport-config
-  "Read transport section from config"
-  []
-  (m/mlet [cfgpath (get-configfile-path)
-           cfg     (read-config cfgpath)]
-    (if (:transport cfg)
-      (m/return (:transport cfg))
-      (t/left "No transport configuration found con config file."))))
-
-(defn read-storage-config
-  "Read storage section from config"
-  []
-  (m/mlet [cfgpath (get-configfile-path)
-           cfg     (read-config cfgpath)]
-    (if (:storage cfg)
-      (m/return (:storage cfg))
-      (t/left "No storage configuration found con config file."))))
-
-(defn read-secret-key
-  []
-  (m/mlet [cfgpath (get-configfile-path)
-           cfg     (read-config cfgpath)]
-    (if (:secret-key cfg)
-      (m/return (:secret-key cfg))
-      (t/left "No secretkey configured."))))
-
-(defn setup-config
+(defn setup-config!
   [path]
-  (let [f (io/as-file path)]
-    (if-not (.exists f)
-      (let [msg (format "Specified file '%s' not found" path)]
-        (t/left {:type :fail :value msg}))
-      (do
-        (reset! *config-path* path)
-        (t/right)))))
+  (cond
+   (string? path)
+   (let [f (io/as-file path)]
+     (when-not (.exists f)
+       (log :error (format "File '%s' not found" path))
+       (exit 1))
+     (let [cfg (read-config path)]
+       (validate-config cfg)
+       (reset! *config* cfg)
+       cfg))
 
+   (map? path)
+   (do
+     (validate-config path)
+     (reset! *config* path)
+     path)))
 
+(defrecord Configuration [path cfg]
+  component/Lifecycle
+  (start [component]
+    (log :info "Starting config module.")
+    (let [cfg (setup-config! path)]
+      (assoc component :cfg cfg)))
+
+  (stop [_]
+    (log :info "Stoping config module.")))
+
+(defn configuration
+  [path]
+  (map->Configuration {:path path}))
+
+;; (defn- keywordize [s]
+;;   (-> (str/lower-case s)
+;;       (str/replace "_" "-")
+;;       (keyword)))
+
+;; (defn- read-system-properties
+;;   "Read system properties and return map."
+;;   []
+;;   (->> (System/getProperties)
+;;        (map (fn [[k v]] [(keywordize k) v]))
+;;        (into {})
+;;        (t/just)))
+
+;; (defn get-configfile-path
+;;   "Get configuration file path."
+;;   []
+;;   (m/mlet [props (read-system-properties)]
+;;     (if-let [path (:mammutdb.cfg props @*config-path*)]
+;;       (t/right path)
+;;       (t/left "Configuration file not specified."))))
+
+;; (defn read-transport-config
+;;   "Read transport section from config"
+;;   []
+;;   (m/mlet [cfgpath (get-configfile-path)
+;;            cfg     (read-config cfgpath)]
+;;     (if (:transport cfg)
+;;       (m/return (:transport cfg))
+;;       (t/left "No transport configuration found con config file."))))
+
+;; (defn read-storage-config
+;;   "Read storage section from config"
+;;   []
+;;   (m/mlet [cfgpath (get-configfile-path)
+;;            cfg     (read-config cfgpath)]
+;;     (if (:storage cfg)
+;;       (m/return (:storage cfg))
+;;       (t/left "No storage configuration found con config file."))))
+
+;; (defn read-secret-key
+;;   []
+;;   (m/mlet [cfgpath (get-configfile-path)
+;;            cfg     (read-config cfgpath)]
+;;     (if (:secret-key cfg)
+;;       (m/return (:secret-key cfg))
+;;       (t/left "No secretkey configured."))))

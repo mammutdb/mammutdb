@@ -27,7 +27,8 @@
 
 (defprotocol Lifecycle
   (start [_] "Initialize/Start process.")
-  (stop [_] "Die/Stop process."))
+  (stop [_] "Die/Stop process.")
+  (status [_] "Get status of current process."))
 
 (defprotocol Joinable
   (join [_] "Join to current proces until it finishes."))

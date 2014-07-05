@@ -25,27 +25,43 @@
 (ns mammutdb.transports
   "Main interface to transport initialization."
   (:require [clojure.string :as str]
-            [mammutdb.core.lifecycle :as lifecycle]
+            [com.stuartsierra.component :as component]
             [cats.core :as m]
-            [cats.types :as t]))
+            [cats.types :as t]
+            [mammutdb.logging :refer [log]]
+            [mammutdb.core.util :refer [exit]]))
 
 (defn resolve-fn-by-name
   "Given a name, dynamicaly load function."
   [^String path]
-  (let [[nsname fnname] (str/split path #"/")]
+  (let [loadpath (first path)
+        callable (second path)
+        nsname   (str/replace loadpath #"/" ".")]
     (try
-      (load nsname)
-      (t/right (ns-resolve (symbol nsname) (symbol fnname)))
+      (load loadpath)
+      (ns-resolve (symbol nsname) (symbol callable))
       (catch Exception e
-        (t/left (str e))))))
+        (log :error (format "Canot load transport '%s'" loadpath))
+        (exit 1)))))
 
 (defn load-transport
-  [conf]
-  (if-let [path (:path conf)]
-    (m/<*> (resolve-fn-by-name path) conf)
-    (t/left "Transport path not defined on configuration")))
+  [path options]
+  (let [func (resolve-fn-by-name path)]
+    (func options)))
 
-(defn initialize-transport
-  [conf]
-  (m/mlet [transport (load-transport conf)]
-    (m/return transport)))
+(defrecord Transport [configuration transport]
+  component/Lifecycle
+  (start [component]
+    (log :info "Starting transport")
+    (let [path      (get-in configuration [:cfg :transport :path])
+          options   (get-in configuration [:cfg :transport :options])
+          transport (load-transport path options)]
+      (assoc component :transport (component/start transport))))
+
+  (stop [_]
+    (component/stop transport)))
+
+(defn transport
+  "Transport constructor."
+  []
+  (map->Transport {}))
