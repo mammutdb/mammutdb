@@ -24,27 +24,27 @@
 
 (ns mammutdb.api.documents
   (:require [cats.types :as t]
-            [cats.core :as m]
-            [mammutdb.storage.connection :as conn]
-            [mammutdb.storage.collections :as scoll]
-            [mammutdb.storage.documents :as sdoc]
-            [mammutdb.storage.transaction :as stx]
-            [mammutdb.core.edn :as edn]
-            [mammutdb.core.uuid :refer [str->muuid]]
-            [mammutdb.core.error :as err]))
+            [cats.core :as m]))
+;;             [mammutdb.storage.connection :as conn]
+;;             [mammutdb.storage.collections :as scoll]
+;;             [mammutdb.storage.documents :as sdoc]
+;;             [mammutdb.storage.transaction :as stx]
+;;             [mammutdb.core.edn :as edn]
+;;             [mammutdb.core.uuid :refer [str->muuid]]
+;;             [mammutdb.core.error :as err]))
 
-(defn get-by-id
-  "Get document by id."
-  [^String collection ^String id]
-  (let [txfn (fn [con]
-               (m/mlet [id (str->muuid id)
-                        c  (scoll/get-by-name con collection)
-                        d  (sdoc/get-by-id con c id)]
-                 (m/return d)))]
-    (m/mlet [con (conn/new-connection)
-             res (stx/run-in-transaction con txfn)
-             _   (conn/close-connection con)]
-      (m/return res))))
+;; (defn get-by-id
+;;   "Get document by id."
+;;   [^String collection ^String id]
+;;   (let [txfn (fn [con]
+;;                (m/mlet [id (str->muuid id)
+;;                         c  (scoll/get-by-name con collection)
+;;                         d  (sdoc/get-by-id con c id)]
+;;                  (m/return d)))]
+;;     (m/mlet [con (conn/new-connection)
+;;              res (stx/run-in-transaction con txfn)
+;;              _   (conn/close-connection con)]
+;;       (m/return res))))
 
 ;; (defn persist
 ;;   "Persist document."

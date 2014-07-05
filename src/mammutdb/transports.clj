@@ -41,6 +41,7 @@
       (load loadpath)
       (ns-resolve (symbol nsname) (symbol callable))
       (catch Exception e
+        (.printStackTrace e)
         (log :error (format "Canot load transport '%s'" loadpath))
         (exit 1)))))
 

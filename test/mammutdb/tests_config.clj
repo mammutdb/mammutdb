@@ -12,4 +12,3 @@
     (let [conf (config/read-config "test/testconfig.edn")]
       (is (:transport conf))
       (is (:storage conf)))))
-

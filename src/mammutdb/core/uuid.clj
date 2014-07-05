@@ -24,8 +24,7 @@
 
 (ns mammutdb.core.uuid
   "Uuid monadic constructors."
-  (:require [mammutdb.core.error :as err]
-            [cats.types :as t]))
+  (:require [cats.types :as t]))
 
 (defn str->uuid
   "Convert string representation of uuid
@@ -33,11 +32,12 @@
   [^String uuid]
   (java.util.UUID/fromString uuid))
 
+
+;; TODO: catch parse errors
 (defn str->muuid
   "Same as str->uuid but return monadic value."
   [^String uuid]
-  (err/catch-to-either
-    (t/right (str->uuid uuid))))
+  (t/right (str->uuid uuid)))
 
 
 

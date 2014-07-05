@@ -61,7 +61,7 @@
 (defn initialize
   [confpath]
   (let [lock (barrier/count-down-latch 1)]
-    (System/setProperty "org.eclipse.jetty.LEVEL" "OFF")
+    (System/setProperty "org.eclipse.jetty.LEVEL" "INFO")
     (component/start (system confpath))
     (barrier/wait lock)))
 

@@ -55,7 +55,7 @@
                  [ring/ring-core "1.2.2" :exclusions [javax.servlet/servlet-api]]
                  [ring/ring-servlet "1.2.2" :exclusions [javax.servlet/servlet-api]]]
   ;; :aot :all
-  :main ^:skip-aot mammutdb.cli
+  ;; :main ^:skip-aot mammutdb.cli
   :target-path "target/%s"
   :injections [(use 'cats.types)
                (use 'cats.core)])

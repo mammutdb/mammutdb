@@ -22,9 +22,9 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.transports.http.controllers)
+(ns mammutdb.transports.http.controllers
+  (:require [ring.util.response :refer [response]]))
 
 (defn home-ctrl
   [request]
-  (println request)
-  (str "Hello World"))
+  (response {:message "hello world"}))

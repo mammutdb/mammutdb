@@ -24,6 +24,7 @@
 
 (ns mammutdb.transports.http
   (:require [compojure.handler :refer [api]]
+            [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
             [ring.adapter.jetty9 :refer [run-jetty]]
             [com.stuartsierra.component :as component]
             [mammutdb.logging :refer [log]]
@@ -40,10 +41,13 @@
   component/Lifecycle
   (start [component]
     (log :info "Starting transport: http")
-    (let [app    (api main-routes)
+    (let [app    (-> main-routes
+                     (wrap-json-body {:keywords? true :bigdecimals? true})
+                     (wrap-json-response {:pretty false})
+                     (api))
           opts   (assoc options
                    :daemon? true
-                   :join false)
+                   :join? false)
           stopfn (run-jetty app opts)]
       (assoc component
         :app app
@@ -51,7 +55,7 @@
 
   (stop [_]
     (log :info "Stoping transport: http")
-    (stopfn)))
+    (.stop stopfn)))
 
 (defn transport
   [options]

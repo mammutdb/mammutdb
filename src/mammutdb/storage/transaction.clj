@@ -2,12 +2,12 @@
   "Transaction abstractions."
   (:require [cats.core :as m]
             [cats.types :as t]
-            [mammutdb.core.error :as err]))
+            [mammutdb.core.errors :as err]))
 
-(defn run-in-transaction
-  [con func & [{:keys [retries] :or {retries 3}}]]
-  (let [con (t/just con)]
-    (m/>>= (t/just con) func)))
+;; (defn run-in-transaction
+;;   [con func & [{:keys [retries] :or {retries 3}}]]
+;;   (let [con (t/just con)]
+;;     (m/>>= (t/just con) func)))
 
 ;; (loop [retry 0]
 ;;   (try
