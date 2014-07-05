@@ -82,7 +82,7 @@
 
 (defn bootstrap
   "Initialize migrations system and create
-  mandatory tables if them does not exists."
+  mandatory tables if them does not exist."
   []
   (with-open [conn (j/make-connection @c/datasource)]
     (when-not (initialized? conn)

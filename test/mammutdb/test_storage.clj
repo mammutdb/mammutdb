@@ -29,7 +29,7 @@
       (let [mr (sdb/exists? "notexistsdb" conn)
             r  (t/from-either mr)]
         (is (t/left? mr))
-        (is (= (:error-code r) :database-not-exists)))))
+        (is (= (:error-code r) :database-does-not-exist)))))
 
   (testing "Create/Delete database"
     (with-open [conn (j/make-connection @sconn/datasource)]
@@ -75,7 +75,7 @@
             mr (scoll/exists? db "notexistent" conn)
             r  (t/from-either mr)]
         (is (t/left? mr))
-        (is (= (:error-code r) :collection-not-exists)))))
+        (is (= (:error-code r) :collection-does-not-exist)))))
 
   (testing "Create/Delete collection"
     (with-open [conn (j/make-connection @sconn/datasource)]
@@ -126,7 +126,8 @@
         (is (not= (.-rev doc2) (.-rev doc3)))
         (is (<
              (jc/to-long (.-createdat doc2))
-             (jc/to-long (.-createdat doc3)))))))
+             (jc/to-long (.-createdat doc3))))
+        (scoll/drop! coll conn))))
 )
 
 

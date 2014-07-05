@@ -103,8 +103,8 @@
            res  (sconn/query-first con sql)]
     (if (:exists res)
       (m/return (->database name))
-      (e/error :database-not-exists
-               (format "Database '%s' does not exists" name)))))
+      (e/error :database-does-not-exist
+               (format "Database '%s' does not exist" name)))))
 
 (defn create!
   [name con]

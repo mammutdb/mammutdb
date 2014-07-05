@@ -49,8 +49,8 @@
            result (sconn/query-first conn sql)]
     (if result
       (t/right (stypes/map->user result))
-      (e/error :user-not-exists
-               (format "User '%s' not exists" username)))))
+      (e/error :user-does-not-exist
+               (format "User '%s' not exist" username)))))
 
 (defn get-user-by-id
   [^Long id conn]
@@ -59,8 +59,8 @@
            result (sconn/query-first conn sql)]
     (if result
       (t/right (stypes/map->user result))
-      (e/error :user-not-exists
-               (format "User with id '%s' not exists" id)))))
+      (e/error :user-does-not-exist
+               (format "User with id '%s' not exist" id)))))
 
 (defn exists?
   [^String username conn]
@@ -69,8 +69,8 @@
     (m/mlet [res (sconn/query-first conn sql)]
       (if (:exists res)
         (m/return username)
-        (e/error :user-not-exists
-                 (format "User '%s' not exists" username))))))
+        (e/error :user-does-not-exist
+                 (format "User '%s' not exist" username))))))
 
 (defn create!
   [^String username ^String password conn]

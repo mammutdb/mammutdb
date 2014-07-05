@@ -1,5 +1,7 @@
 # mammutdb
 
+[![Travis Badge](https://img.shields.io/travis/niwibe/mammutdb.svg?style=flat)](https://travis-ci.org/niwibe/mammutdb "Travis Badge")
+
 Fully transactional and immutable opensource database.
 
 
