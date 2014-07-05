@@ -52,4 +52,4 @@
       (let [mr (suser/exists? "test" conn)
             r  (t/from-either mr)]
         (is (t/left? mr))
-        (is (= (:error-code r) :user-not-exists))))))
+        (is (= (:error-code r) :user-does-not-exist))))))

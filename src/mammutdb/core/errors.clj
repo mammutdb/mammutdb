@@ -32,20 +32,20 @@
    {:msg "Collection already exists"
     :http-code :400}
 
-   :collection-not-exists
-   {:msg "Collection does not exists"
+   :collection-does-not-exist
+   {:msg "Collection does not exist"
     :http-code :404}
 
-   :database-not-exists
-   {:msg "Database does not exists"
+   :database-does-not-exist
+   {:msg "Database does not exist"
     :http-code :404}
 
    :database-name-unsafe
    {:msg "Database name is unsafe"
     :http-code :400}
 
-   :user-not-exists
-   {:msg "User does not exists"
+   :user-does-not-exist
+   {:msg "User does not exist"
     :http-code :404}
 
    :wrong-authentication

@@ -145,8 +145,8 @@
     (m/mlet [res (sconn/query-first conn sql)]
       (if (:exists res)
         (m/return name)
-        (e/error :collection-not-exists
-                 (format "Collection '%s' does not exists" name))))))
+        (e/error :collection-does-not-exist
+                 (format "Collection '%s' does not exist" name))))))
 
   (get-collection-by-name [db name conn]
     (m/mlet [safe? (safe-name? name)
@@ -157,8 +157,8 @@
              rev   (sconn/query-first conn sql)]
       (if rev
         (m/return (sproto/->collection db name :json))
-        (e/error :collection-not-exists
-                 (format "Collection '%s' does not exists" name)))))
+        (e/error :collection-does-not-exist
+                 (format "Collection '%s' does not exist" name)))))
 
   (create-collection! [db name type conn]
     (case type
