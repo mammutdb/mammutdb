@@ -43,7 +43,6 @@
 (defn drop!
   [name]
   (->> (fn [conn]
-         (m/mlet [db  (sdb/get-by-name name conn)
-                  res (sdb/drop! db conn)]
-           (m/return res)))
+         (m/>>= (sdb/get-by-name name conn)
+                (fn [db] (sdb/drop! db conn))))
        (stx/transaction {:readonly false})))
