@@ -23,7 +23,6 @@
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (ns mammutdb.api.database
-  (:refer-clojure :exclude [list])
   (:require [cats.types :as t]
             [cats.core :as m]
             [mammutdb.core.errors :as e]
@@ -31,42 +30,20 @@
             [mammutdb.storage.transaction :as stx]
             [mammutdb.storage.database :as sdb]))
 
-;; TODO: this is a temporal implementation
-
 (defn get-all
   []
-  (let [txfn (fn [conn]
-               (m/mlet [databases (sdb/get-all conn)]
-                 (m/return databases)))]
-    (m/mlet [conn   (sconn/new-connection)
-             result (stx/run-in-transaction conn txfn {:readonly true})
-             _      (sconn/close-connection conn)]
-      (m/return result))))
+  (->> (fn [conn] (sdb/get-all conn))
+       (stx/transaction {:readonly true})))
 
 (defn create!
   [name]
-  (let [txfn (fn [conn]
-               (m/mlet [exists? (sdb/exists? name conn)
-                        _       (if exists?
-                                  (e/error :database-exists)
-                                  (t/right))
-                        result  (sdb/create! name conn)]
-                 (m/return result)))]
-    (m/mlet [conn   (sconn/new-connection)
-             result (stx/run-in-transaction conn txfn {:readonly false})
-             _      (sconn/close-connection conn)]
-      (m/return result))))
+  (->> (fn [conn] (sdb/create! name conn))
+       (stx/transaction {:readonly false})))
 
 (defn drop!
   [name]
-  (let [txfn (fn [conn]
-               (m/mlet [db  (sdb/get-by-name name conn)
-                        res (sdb/drop! db conn)]
-                 (m/return res)))]
-    (m/mlet [conn   (sconn/new-connection)
-             result (stx/run-in-transaction conn txfn {:readonly false})
-             _      (sconn/close-connection conn)]
-      (m/return result))))
-
-
-
+  (->> (fn [conn]
+         (m/mlet [db  (sdb/get-by-name name conn)
+                  res (sdb/drop! db conn)]
+           (m/return res)))
+       (stx/transaction {:readonly false})))
