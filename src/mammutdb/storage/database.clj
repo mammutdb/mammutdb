@@ -127,12 +127,19 @@
                (format "Database '%s' does not exist" name)))))
 
 (defn create!
-  [name con]
-  (m/mlet [safe (safe-name? name)
-           :let [sql ["INSERT INTO mammutdb_databases (name) VALUES (?)" name]]]
-    (serr/catch-sqlexception
-     (j/execute-prepared! con sql)
-     (t/right (->database name)))))
+  [name conn]
+  (let [sqlexists ["SELECT EXISTS(SELECT * FROM
+                    mammutdb_databases WHERE name = ?);" name]
+        sqlinsert ["INSERT INTO mammutdb_databases (name) VALUES (?)" name]]
+    (m/>>=
+     (safe-name? name)
+     (fn [_] (sconn/query-first conn sqlexists))
+     (fn [existsresult]
+       (if (:exists existsresult)
+         (e/error :database-exists (format "Database '%s' is already exists." name))
+         (t/right)))
+     (fn [_] (sconn/execute-prepared! conn sqlinsert))
+     (fn [_] (m/return (->database name))))))
 
 (defn drop!
   [db con]
