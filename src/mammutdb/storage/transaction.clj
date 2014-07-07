@@ -1,13 +1,12 @@
 (ns mammutdb.storage.transaction
   "Transaction abstractions."
   (:require [cats.core :as m]
-            [cats.types :as t]
-            [mammutdb.core.errors :as err]))
+            [cats.types :as t]))
 
-;; (defn run-in-transaction
-;;   [con func & [{:keys [retries] :or {retries 3}}]]
-;;   (let [con (t/just con)]
-;;     (m/>>= (t/just con) func)))
+(defn run-in-transaction
+  [conn func & [{:keys [retries readonly] :or {retries 3 readonly false}}]]
+  (let [conn (t/just conn)]
+    (m/>>= conn func)))
 
 ;; (loop [retry 0]
 ;;   (try

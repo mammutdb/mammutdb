@@ -45,6 +45,20 @@
 
       (sdb/drop! (sdb/->database "testdb") conn)))
 
+  (testing "List created databases"
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [mr1 (sdb/create! "testdb1" conn)
+            mr2 (sdb/create! "testdb2" conn)
+            mr3 (sdb/get-all conn)
+            r   (t/from-either mr3)]
+        (is (t/right? mr3))
+        (is (vector? r))
+        (is (= (count r) 2))
+        (is (sdb/database? (first r)))
+
+        (sdb/drop! (t/from-either mr1) conn)
+        (sdb/drop! (t/from-either mr2) conn))))
+
   (testing "Create duplicate database"
     (with-open [conn (j/make-connection @sconn/datasource)]
       (let [mr1 (sdb/create! "testdb" conn)

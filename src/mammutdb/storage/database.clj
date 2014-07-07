@@ -86,6 +86,16 @@
   [name]
   (Database. name))
 
+(defn database?
+  [v]
+  (instance? Database v))
+
+(defn get-all
+  [conn]
+  (m/mlet [:let [sql "SELECT name FROM mammutdb_databases ORDER BY name;"]
+           res  (sconn/query conn sql)]
+    (t/right (mapv (comp ->database :name) res))))
+
 (defn safe-name?
   "Parse collection name and return a safe
   string or nil."
@@ -93,6 +103,16 @@
   (if (re-matches *database-safe-rx* name)
     (t/right true)
     (e/error :database-name-unsafe)))
+
+(defn get-by-name
+  [name conn]
+  (m/mlet [_    (safe-name? name)
+           :let [sql ["SELECT name FROM mammutdb_databases
+                       WHERE name = ?;" name]]
+           res  (sconn/query-first conn sql)]
+    (if res
+      (m/return (->database (:name res)))
+      (e/error :database-does-not-exist))))
 
 (defn exists?
   "Check if database with given name, are

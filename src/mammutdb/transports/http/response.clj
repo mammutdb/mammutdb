@@ -22,13 +22,10 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.transports.http.routes
-  (:require [compojure.core :refer :all]
-            [compojure.handler :refer [api]]
-            [mammutdb.transports.http.controllers :as ctrl]))
+(ns mammutdb.transports.http.response)
 
-(defroutes main-routes
-  (ANY "/" [] ctrl/home-ctrl)
-  (GET "/dbs" [] ctrl/databases-list)
-  (PUT "/dbs/:dbname" [] ctrl/databases-create)
-  (DELETE "/dbs/:dbname" [] ctrl/databases-drop))
+(defn ok [d] {:status 200 :body d})
+(defn created [d] {:status 201 :body d})
+(defn no-content [] {:status 204 :body ""})
+(defn bad-request [d] {:status 400 :body d})
+(defn not-found [d] {:status 404 :body d})

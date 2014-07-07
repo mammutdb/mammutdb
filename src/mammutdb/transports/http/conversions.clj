@@ -22,13 +22,13 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.transports.http.routes
-  (:require [compojure.core :refer :all]
-            [compojure.handler :refer [api]]
-            [mammutdb.transports.http.controllers :as ctrl]))
+(ns mammutdb.transports.http.conversions
+  (:require [mammutdb.transports.http.protocols :as proto]
+            [mammutdb.storage.database :as sdb])
+  (:import mammutdb.storage.database.Database))
 
-(defroutes main-routes
-  (ANY "/" [] ctrl/home-ctrl)
-  (GET "/dbs" [] ctrl/databases-list)
-  (PUT "/dbs/:dbname" [] ctrl/databases-create)
-  (DELETE "/dbs/:dbname" [] ctrl/databases-drop))
+(extend-protocol proto/Serializable
+  mammutdb.storage.database.Database
+  (to-plain-object [db]
+    {:name (.-name db)
+     :createdAt nil}))

@@ -22,13 +22,7 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.transports.http.routes
-  (:require [compojure.core :refer :all]
-            [compojure.handler :refer [api]]
-            [mammutdb.transports.http.controllers :as ctrl]))
+(ns mammutdb.transports.http.protocols)
 
-(defroutes main-routes
-  (ANY "/" [] ctrl/home-ctrl)
-  (GET "/dbs" [] ctrl/databases-list)
-  (PUT "/dbs/:dbname" [] ctrl/databases-create)
-  (DELETE "/dbs/:dbname" [] ctrl/databases-drop))
+(defprotocol Serializable
+  (to-plain-object [_] "Convert object to plain clojure object"))

@@ -23,8 +23,53 @@
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (ns mammutdb.transports.http.controllers
-  (:require [ring.util.response :refer [response]]))
+  (:require [cats.core :as m]
+            [cats.types :as t]
+            [mammutdb.api.database :as dbapi]
+            [mammutdb.transports.http.conversions :as conv]
+            [mammutdb.transports.http.protocols :refer [to-plain-object]]
+            [mammutdb.transports.http.response :refer :all]))
 
 (defn home-ctrl
   [request]
-  (response {:message "hello world"}))
+  (ok {:server "MammutDB 1.0-SNAPSHOT"}))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Databases Api
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn databases-list
+  [request]
+  (let [mresult (dbapi/get-all)
+        result  (t/from-either mresult)]
+    (cond
+     (t/right? mresult)
+     (ok (mapv to-plain-object result))
+
+     (t/left? mresult)
+     (bad-request {:message "error"}))))
+
+(defn databases-create
+  [request]
+  (if-let [dbname (get-in request [:params :dbname])]
+    (let [result (dbapi/create! dbname)]
+      (cond
+       (t/right? result)
+       (no-content)
+
+       (t/left? result)
+       (bad-request {:message "error"})))
+    (bad-request {:message "error"})))
+
+
+(defn databases-drop
+  [request]
+  (if-let [dbname (get-in request [:params :dbname])]
+    (let [result (dbapi/drop! dbname)]
+      (cond
+       (t/right? result)
+       (no-content)
+
+       (t/left? result)
+       (bad-request {:message "error"})))
+    (bad-request {:message "error"})))
