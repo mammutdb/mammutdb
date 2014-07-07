@@ -45,7 +45,7 @@
 ;; Types
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype Database [name]
+(deftype Database [id name createdat]
   java.lang.Object
   (toString [_]
     (with-out-str
@@ -83,8 +83,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn ->database
-  [name]
-  (Database. name))
+  ([name]
+     (Database. nil name nil))
+  ([id name createdat]
+     (Database. id name createdat)))
+
+(defn record->database
+  [{:keys [id name created_at]}]
+  (->database id name created_at))
 
 (defn database?
   [v]
@@ -92,9 +98,10 @@
 
 (defn get-all
   [conn]
-  (m/mlet [:let [sql "SELECT name FROM mammutdb_databases ORDER BY name;"]
+  (m/mlet [:let [sql "SELECT id, name, created_at
+                      FROM mammutdb_databases ORDER BY name;"]
            res  (sconn/query conn sql)]
-    (t/right (mapv (comp ->database :name) res))))
+    (t/right (mapv record->database res))))
 
 (defn safe-name?
   "Parse collection name and return a safe
@@ -138,8 +145,8 @@
        (if (:exists existsresult)
          (e/error :database-exists (format "Database '%s' is already exists." name))
          (t/right)))
-     (fn [_] (sconn/execute-prepared! conn sqlinsert))
-     (fn [_] (m/return (->database name))))))
+     (fn [_] (sconn/execute-prepared! conn sqlinsert {:returning :all}))
+     (fn [recs] (m/return (record->database (first recs)))))))
 
 (defn drop!
   [db con]

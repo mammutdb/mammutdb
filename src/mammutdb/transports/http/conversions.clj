@@ -31,4 +31,5 @@
   mammutdb.storage.database.Database
   (to-plain-object [db]
     {:name (.-name db)
-     :createdAt nil}))
+     :id (.-id db)
+     :createdAt (.-createdat db)}))

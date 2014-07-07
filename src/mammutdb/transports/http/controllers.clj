@@ -70,7 +70,7 @@
     (let [result (dbapi/create! dbname)]
       (cond
        (t/right? result)
-       (no-content)
+       (created (to-plain-object (t/from-either result)))
 
        (t/left? result)
        (left-as-response result)))
