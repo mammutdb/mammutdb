@@ -26,6 +26,7 @@
   (:refer-clojure :exclude [list])
   (:require [cats.types :as t]
             [cats.core :as m]
+            [mammutdb.core.errors :as e]
             [mammutdb.storage.connection :as sconn]
             [mammutdb.storage.transaction :as stx]
             [mammutdb.storage.database :as sdb]))
@@ -45,7 +46,11 @@
 (defn create!
   [name]
   (let [txfn (fn [conn]
-               (m/mlet [result (sdb/create! name conn)]
+               (m/mlet [exists? (sdb/exists? name conn)
+                        _       (if exists?
+                                  (e/error :database-exists)
+                                  (t/right))
+                        result  (sdb/create! name conn)]
                  (m/return result)))]
     (m/mlet [conn   (sconn/new-connection)
              result (stx/run-in-transaction conn txfn {:readonly false})

@@ -40,6 +40,10 @@
    {:msg "Database does not exist"
     :http-code :404}
 
+   :database-exists
+   {:msg "Database already exists"
+    :http-code :400}
+
    :database-name-unsafe
    {:msg "Database name is unsafe"
     :http-code :400}
@@ -69,6 +73,7 @@
   (if-let [errdata (code *mammutdb-error-codes*)]
     (t/left {:error-code code
              :error-ctx ctx
+             :http-code (:http-code errdata)
              :error-msg (or msg (:msg errdata))})
     (t/left {:error-code :unexpected
              :error-ctx ctx

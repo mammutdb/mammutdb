@@ -43,7 +43,7 @@
     (log :info "Starting transport: http")
     (let [app    (-> main-routes
                      (wrap-json-body {:keywords? true :bigdecimals? true})
-                     (wrap-json-response {:pretty false})
+                     (wrap-json-response {:pretty true})
                      (api))
           opts   (assoc options
                    :daemon? true

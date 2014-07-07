@@ -35,6 +35,21 @@
   (ok {:server "MammutDB 1.0-SNAPSHOT"}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Error Handling
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn left-as-response
+  [result]
+  (let [value (t/from-either result)
+        response {:code (:error-code value)
+                  :msg (:error-msg value)
+                  :ctx (:error-ctx value)}]
+    (case (:http-code value)
+      :400 (bad-request response)
+      :404 (not-found response)
+      (bad-request (assoc response :type :unexpected)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Databases Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -47,7 +62,7 @@
      (ok (mapv to-plain-object result))
 
      (t/left? mresult)
-     (bad-request {:message "error"}))))
+     (left-as-response mresult))))
 
 (defn databases-create
   [request]
@@ -58,9 +73,8 @@
        (no-content)
 
        (t/left? result)
-       (bad-request {:message "error"})))
+       (left-as-response result)))
     (bad-request {:message "error"})))
-
 
 (defn databases-drop
   [request]
@@ -71,5 +85,5 @@
        (no-content)
 
        (t/left? result)
-       (bad-request {:message "error"})))
+       (left-as-response result)))
     (bad-request {:message "error"})))
