@@ -13,7 +13,7 @@ Currently on design phases.
 - Strong ACID transactionality.
 - Immutable data.
 - Transaction log and full history navigability.
-- Ligweight schema support for data validation.
+- Lightweight schema support for data validation.
 - Database/Collection/Document logical storage separation
 - PostgreSQL as storage engine.
 - Different types of documents/collections: json, binary blob, edn?
