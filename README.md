@@ -4,57 +4,63 @@
 
 Fully transactional and immutable opensource database.
 
-
 ## Project status
 
 Currently on design phases.
 
+## Features
 
-## Ideas
+- Strong ACID transactionality.
+- Immutable data.
+- Transaction log and full history navigability.
+- Ligweight schema support for data validation.
+- Database/Collection/Document logical storage separation
+- PostgreSQL as storage engine.
+- Different types of documents/collections: json, binary blob, edn?
+- Optional OCC (optimistic concurrency control).
+- Distributed cache.
 
-- Revision system/Transaction log (CouchDB)
-- MVCC (PostgreSQL and CouchDB)
-- Immutable database (related to transaction log) (Datomic)
-- Garbage collector (like postgresql vacuum or couchdb gc) (PostgreSQL and CouchDB)
-- Client interface as HTTP (CouchDB)
-- Collection/document concept (MongoDB)
-- Strong transactions and safe persistence (PostgreSQL)
-- Optimistic concurrency control (CouchDB)
-- Composable configuration for collection types
-- JSON based (CouchDB)
-- Pluggable schema definition
-- Pluggable client interfaces
+NOTE: this is a full features list, to know the state of each item,
+see the changelog or below development phases state.
 
+## Development phases
 
-## Goals
+### Zero phase goals (meta) ###
 
-### Main goals
+- [x] Monadic storage api.
+- [x] Pluggable transport interface.
+- [x] Configuration management.
+- [x] Storage layout migrations.
+- [x] Http Api layout and dynamic loading through configuration
 
-- Should be written with Clojure.
-- Should be written in purely functional way.
-- No reinvent: PostgreSQL should be used for storage.
+### First phase ###
 
-### First phase goals (main)
+- [ ] Basic crud for Documents/Collections/Databases
+- [ ] Full transactionality support on high level database api.
+- [ ] Navigability through transaction-log/revisions of one document.
+- [ ] Optionally optimistic concurrency control for collections.
+- [ ] Basic query/filtering support for Collections and Databases.
+- [ ] Optional shema support for compatible collections.
 
-- Pluggable client interface.
-- Initially full stateless HTTP restful client interface.
-- Full support for transactions.
-- Revision system "a la CouchDB".
-- Optimistic concurrency control.
-- MongoDB like collections/document concept (obviously without mongodb limits).
-- Basic query/filtering support (by id and any json key).
-- Basic indexes support for specific document keys.
+### Second phase ###
 
-### Second phase goals
+- [ ] Basic indexes support.
+- [ ] Rich collection filtering.
+- [ ] Clojure driver/bindings.
+- [ ] Python3 driver/bindings.
 
-- Pluggable schema definition.
-- Advanced query language support.
-- Support for joins between collections.
-- Support store binary blobs.
+### Third phase ###
+
+- [ ] Rich query language.
+- [ ] Joins between collections.
+- [ ] Binary collection/document type.
+- [ ] Cache objects.
+- [ ] Distributed cache.
+
+### Future ideas ###
+
 - Support full text search indexes and searches.
-- Different types of collections: without transactions, without revisions
-  (for write high performance collections), without occ.
-- Official clojure client library.
-- Official haskell client library.
-- Official python3 client library.
+- Fast collections.
+- Haskell driver/bindings.
+- Golang driver/bindings.
 
