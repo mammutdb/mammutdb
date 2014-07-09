@@ -25,7 +25,7 @@ see the changelog or below development phases state.
 
 ## Development phases
 
-### Zero phase goals (meta) ###
+### Zero phase (meta) ###
 
 - [x] Monadic storage api.
 - [x] Pluggable transport interface.
