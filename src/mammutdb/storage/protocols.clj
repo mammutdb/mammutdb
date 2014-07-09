@@ -55,12 +55,16 @@
 (defprotocol DocumentStore
   (record->document [_ rec] "Buld document from record")
   (->document [_ id rev data createdat] "Build document from data.")
-  (get-by-id [_ id conn] "Get document by id")
   (persist! [_ doc conn] "Persist document"))
+
+(defprotocol DocumentQueryable
+  (get-by-rev [_ id rev conn] "Search document by id and rev")
+  (get-by-id [_ id conn] "Get document by id"))
+
+;; (defprotocol DocumentRichQueryable
+;;   (filter-by-key [
 
 (defprotocol Droppable
   "Any thing that can be droppable
   should implement this protocol."
   (drop! [_ conn] "Drop element"))
-
-

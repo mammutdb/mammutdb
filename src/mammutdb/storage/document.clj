@@ -120,13 +120,6 @@
 
 (extend-type JsonDocumentCollection
   sproto/DocumentStore
-  (get-by-id [coll id conn]
-    (m/mlet [rec (-<> (sproto/get-mainstore-tablename coll)
-                      (format "SELECT * FROM %s WHERE id = ?;" <>)
-                      (vector <> id)
-                      (sconn/query-first conn <>))]
-      (m/return (sproto/record->document coll rec))))
-
   (persist! [coll doc conn]
     (let [timestamp (jt/now)
           forupdate (not (nil? (.-id doc)))]
@@ -140,7 +133,24 @@
            (JsonDocument. coll id revision data))))
 
   (->document [coll id rev data createdat]
-    (JsonDocument. coll id rev data createdat)))
+    (JsonDocument. coll id rev data createdat))
+
+  sproto/DocumentQueryable
+  (get-by-id [coll id conn]
+    (m/mlet [rec (-<> (sproto/get-mainstore-tablename coll)
+                      (format "SELECT * FROM %s WHERE id = ?;" <>)
+                      (vector <> id)
+                      (sconn/query-first conn <>))]
+      (m/return (sproto/record->document coll rec))))
+
+  (get-by-rev [coll id rev conn]
+    (m/mlet [rec (-<> (sproto/get-mainstore-tablename coll)
+                      (format "SELECT * FROM %s WHERE id = ? AND revision = ?;" <>)
+                      (vector <> id rev)
+                      (sconn/query-first conn <>))]
+      (m/return (sproto/record->document coll rec)))))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Aliases
