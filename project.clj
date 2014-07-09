@@ -31,6 +31,7 @@
                  [org.clojure/tools.reader "0.8.4"]
                  [org.clojure/tools.cli "0.3.1"]
                  [org.clojure/tools.namespace "0.2.4"]
+                 [org.clojure/core.match "0.2.1"]
                  [cheshire "5.3.1"]
                  [buddy "0.2.0b1"]
                  [cats "0.1.0-SNAPSHOT" :exclusions [org.clojure/clojure]]

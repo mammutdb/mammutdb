@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [mammutdb.storage.query :as sq]))
 
-(deftest querybuilder
+(deftest filterbuilder
   (testing "Make query with basic gt clause"
     (let [fieldname "name"
           querydata [:gt 2]
@@ -27,3 +27,11 @@
           result    (sq/make-filter fieldname querydata)]
       (is (= result ["((name > ?) AND (name < ?))" 20 100]))))
 )
+
+(deftest querybuilder
+  (testing "Make query using :and combinator with two subclauses"
+    (let [querydata [:or ["name" :gt 20] ["subname" :lt 100]]
+          result    (sq/make-query querydata)]
+      (is (= result ["((name > ?) OR (subname < ?))" 20 100]))))
+)
+

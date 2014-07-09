@@ -23,16 +23,13 @@
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (ns mammutdb.storage.query
-  (:require [clojure.string :as str]))
-
-
-;; (sdoc/filter-by-date [:or [:gt 2] [:lt 3]])
-;; (sdoc/filter-by-date )
+  (:require [clojure.string :as str]
+            [clojure.core.match :refer [match]]))
 
 (declare make-filter)
-(declare make-combinator-filter)
+(declare make-query)
 
-(defn make-combinator-filter
+(defn- make-filter-combinator
   [fieldname combstr optrest]
   (let [filters (mapv (partial make-filter fieldname) optrest)
         clauses (->> (mapv first filters)
@@ -41,8 +38,9 @@
         params  (mapv second filters)]
     (apply vector (format "(%s)" clauses) params)))
 
-
 (defn make-filter
+  "Build sql where clause for filtering
+  by one field with one or combined criteria."
   [fieldname filterdata]
   {:pre [(vector? filterdata)
          (> (count filterdata) 1)
@@ -57,5 +55,33 @@
             (first optrest)]
       :lte [(format "(%s <= ?)" fieldname)
             (first optrest)]
-      :or  (make-combinator-filter fieldname "OR" optrest)
-      :and  (make-combinator-filter fieldname "AND" optrest))))
+      :or  (make-filter-combinator fieldname "OR" optrest)
+      :and  (make-filter-combinator fieldname "AND" optrest))))
+
+(defn- make-query-combinator
+  [operator criterias]
+  (let [filters (mapv make-query criterias)
+        clauses (->> (mapv first filters)
+                     (interpose operator)
+                     (str/join " "))
+        params  (mapv second filters)]
+    (apply vector (format "(%s)" clauses) params)))
+
+(defn make-query
+  "Build sql where clause for make a complex query
+  having different fields.
+
+  Criteria example:
+    [:or [\"fieldname\" :gt 2] [\"fieldname\" :lt 100]]
+  "
+  [criteria]
+  {:pre [(vector?  criteria)
+         (> (count criteria) 1)]}
+  (match criteria
+    [field :gt value]  (make-filter field [:gt value])
+    [field :lt value]  (make-filter field [:lt value])
+    [field :gte value] (make-filter field [:gte value])
+    [field :lte value] (make-filter field [:lte value])
+    [:or & rest]       (make-query-combinator "OR" rest)
+    [:and & rest]      (make-query-combinator "AND" rest)))
+
