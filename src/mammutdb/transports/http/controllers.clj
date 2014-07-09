@@ -65,25 +65,23 @@
      (left-as-response mresult))))
 
 (defn databases-create
-  [request]
-  (if-let [dbname (get-in request [:params :dbname])]
-    (let [result (dbapi/create! dbname)]
-      (cond
-       (t/right? result)
-       (created (to-plain-object (t/from-either result)))
+  [{:keys [params] :as req}]
+  (let [dbname (:dbname params)
+        result (dbapi/create! dbname)]
+    (cond
+     (t/right? result)
+     (created (to-plain-object (t/from-either result)))
 
-       (t/left? result)
-       (left-as-response result)))
-    (bad-request {:message "error"})))
+     (t/left? result)
+     (left-as-response result))))
 
 (defn databases-drop
-  [request]
-  (if-let [dbname (get-in request [:params :dbname])]
-    (let [result (dbapi/drop! dbname)]
-      (cond
-       (t/right? result)
-       (no-content)
+  [{:keys [params] :as req}]
+  (let [dbname (:dbname params)
+        result (dbapi/drop! dbname)]
+    (cond
+     (t/right? result)
+     (no-content)
 
-       (t/left? result)
-       (left-as-response result)))
-    (bad-request {:message "error"})))
+     (t/left? result)
+     (left-as-response result))))
