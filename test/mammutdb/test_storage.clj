@@ -65,8 +65,9 @@
             mr2 (sdb/create! "testdb" conn)
             r   (t/from-either mr2)]
         (is (t/right? mr1))
-        (is (t/left? mr2)))
-      ;; TODO: test error code
+        (is (t/left? mr2))
+        (is (= (:error-code r) :database-exists)))
+
       (sdb/drop! (sdb/->database "testdb") conn)))
 )
 
@@ -79,7 +80,6 @@
     (is (t/right? (scoll/safe-name? "testcollname")))
     (let [r (scoll/safe-name? "ddd@ddd")
           i (t/from-either r)]
-
       (is (t/left? r))
       (is (= (:error-code i) :collection-name-unsafe))))
 
@@ -102,6 +102,7 @@
               r  (t/from-either mr)]
           (is (t/right? mr))
           (is r))
+
         (scoll/drop! (scoll/->collection db "testcoll" :json) conn))))
 
   (testing "Created duplicate collection"
@@ -114,6 +115,7 @@
           (is (t/left? mr2))
           (is (= (:error-code r) :collection-exists))
           (is (= (-> r :error-ctx :sqlstate) :42P07)))
+
         (scoll/drop! (scoll/->collection db "testcoll" :json) conn))))
 )
 
@@ -141,7 +143,6 @@
         (is (<
              (jc/to-long (.-createdat doc2))
              (jc/to-long (.-createdat doc3))))
+
         (scoll/drop! coll conn))))
 )
-
-
