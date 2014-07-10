@@ -37,6 +37,7 @@ see the changelog or below development phases state.
 
 - [ ] Basic crud for Documents/Collections/Databases
 - [ ] Full transactionality support on high level database api.
+- [ ] Transaction log.
 - [ ] Navigability through transaction-log/revisions of one document.
 - [ ] Optionally optimistic concurrency control for collections.
 - [ ] Basic query/filtering support for Collections and Databases.
@@ -56,9 +57,12 @@ see the changelog or below development phases state.
 - [ ] Binary collection/document type.
 - [ ] Cache objects.
 - [ ] Distributed cache.
+- [ ] Async events (new revision, new transaction)
 
 ### Future ideas ###
 
+- WebSockets/ServerSentEvents api for events notifications
+- WebHooks
 - Support full text search indexes and searches.
 - Fast collections.
 - Haskell driver/bindings.
