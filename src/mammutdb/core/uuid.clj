@@ -32,12 +32,11 @@
   [^String uuid]
   (java.util.UUID/fromString uuid))
 
-
-;; TODO: catch parse errors
 (defn str->muuid
   "Same as str->uuid but return monadic value."
   [^String uuid]
-  (t/right (str->uuid uuid)))
-
-
-
+  (try
+    (t/right (str->uuid uuid))
+    (catch IllegalArgumentException e
+      (t/left {:error-code :invalid-uuid
+               :exception  e}))))
