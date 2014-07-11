@@ -22,32 +22,40 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.api.database
+(ns mammutdb.api.collection
   (:require [cats.types :as t]
             [cats.core :as m]
             [mammutdb.core.errors :as e]
             [mammutdb.storage.connection :as sconn]
             [mammutdb.storage.transaction :as stx]
-            [mammutdb.storage.database :as sdb]))
+            [mammutdb.storage.database :as sdb]
+            [mammutdb.storage.collection :as scoll]))
 
-(defn get-all-databases
-  []
-  (->> (fn [conn] (sdb/get-all conn))
+(defn get-all-collections
+  [^String dbname]
+  (->> (fn [conn]
+         (m/>>= (sdb/get-by-name dbname conn)
+                (fn [db] (scoll/get-all db conn))))
        (stx/transaction {:readonly true})))
 
-(defn get-db-by-name
-  [name]
-  (->> (fn [conn] (sdb/get-by-name name conn))
+(defn get-collection-by-name
+  [^String dbname ^String name]
+  (->> (fn [conn]
+         (m/>>= (sdb/get-by-name dbname conn)
+                (fn [db] (scoll/get-by-name db name conn))))
        (stx/transaction {:readonly true})))
 
-(defn create-db
-  [name]
-  (->> (fn [conn] (sdb/create! name conn))
+(defn create-collection
+  [^String dbname ^String name]
+  (->> (fn [conn]
+         (m/>>= (sdb/get-by-name dbname conn)
+                (fn [db] (scoll/create! db name :json conn))))
        (stx/transaction {:readonly false})))
 
-(defn drop-db
-  [name]
+(defn drop-collection
+  [^String dbname ^String name]
   (->> (fn [conn]
-         (m/>>= (sdb/get-by-name name conn)
-                (fn [db] (sdb/drop! db conn))))
+         (m/>>= (sdb/get-by-name dbname conn)
+                (fn [db] (scoll/get-by-name db name conn))
+                (fn [coll] (scoll/drop! coll conn))))
        (stx/transaction {:readonly false})))

@@ -27,6 +27,7 @@
             [cats.core :as m]
             [jdbc.core :as j]
             [clojure.string :as str]
+            [swiss.arrows :refer [-<>]]
             [mammutdb.core.edn :as edn]
             [mammutdb.core.errors :as e]
             [mammutdb.storage.database :as sdb]
@@ -42,55 +43,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:dynamic *collection-safe-rx* #"[\w\_\-]+")
+
 (declare safe-name?)
+(declare ->collection)
+(declare record->collection)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Collections Implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- make-mainstore-sql
-  [coll]
-  (->> (sproto/get-mainstore-tablename coll)
-       (format "CREATE TABLE %s (
-                 id uuid UNIQUE PRIMARY KEY,
-                 data json,
-                 revision uuid,
-                 created_at timestamp with time zone
-                );")))
-
-(defn- make-revisions-sql
-  [coll]
-  (->> (sproto/get-revisions-tablename coll)
-       (format "CREATE TABLE %s (
-                 id uuid DEFAULT uuid_generate_v1(),
-                 data json,
-                 revision uuid DEFAULT uuid_generate_v1(),
-                 created_at timestamp with time zone,
-                 UNIQUE (id, revision)
-                );")))
-
-(defn- make-persist-collection-sql
-  [db coll type]
-  ["INSERT INTO mammutdb_collections (type, name, database)
-    VALUES (?, ?, ?);"
-   (name type)
-   (sproto/get-collection-name coll)
-   (sproto/get-database-name db)])
-
-(defn- create-json-collection!
-  [db name con]
-  (m/mlet [safe? (safe-name? name)
-           :let  [coll (sproto/->collection db name :json)
-                  sql1 (make-mainstore-sql coll)
-                  sql2 (make-revisions-sql coll)
-                  sql3 (make-persist-collection-sql db coll :json)]]
-    (serr/catch-sqlexception
-     (j/execute! con sql1)
-     (j/execute! con sql2)
-     (j/execute-prepared! con sql3)
-     (m/return coll))))
-
-(deftype JsonDocumentCollection [database name]
+(deftype JsonDocumentCollection [database name createdat metadata]
   java.lang.Object
   (toString [_]
     (with-out-str
@@ -136,6 +98,54 @@
   (get-database [coll]
     (.-database coll)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Database Extension
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- make-mainstore-sql
+  [coll]
+  (->> (sproto/get-mainstore-tablename coll)
+       (format "CREATE TABLE %s (
+                 id uuid UNIQUE PRIMARY KEY,
+                 data json,
+                 revision uuid,
+                 created_at timestamp with time zone
+                );")))
+
+(defn- make-revisions-sql
+  [coll]
+  (->> (sproto/get-revisions-tablename coll)
+       (format "CREATE TABLE %s (
+                 id uuid DEFAULT uuid_generate_v1(),
+                 data json,
+                 revision uuid DEFAULT uuid_generate_v1(),
+                 created_at timestamp with time zone,
+                 UNIQUE (id, revision)
+                );")))
+
+(defn- make-persist-collection-sql
+  [db coll type]
+  ["INSERT INTO mammutdb_collections (type, name, database)
+    VALUES (?, ?, ?);"
+   (name type)
+   (sproto/get-collection-name coll)
+   (sproto/get-database-name db)])
+
+(defn- create-json-collection!
+  [db name con]
+  (m/mlet [safe? (safe-name? name)
+           ;; TODO: make collection instance with retrieved data
+           ;; after collection creation in postgresql
+           :let  [coll (->collection db name :json)
+                  sql1 (make-mainstore-sql coll)
+                  sql2 (make-revisions-sql coll)
+                  sql3 (make-persist-collection-sql db coll :json)]]
+    (serr/catch-sqlexception
+     (j/execute! con sql1)
+     (j/execute! con sql2)
+     (j/execute-prepared! con sql3)
+     (m/return coll))))
+
 (extend-type Database
   sproto/CollectionStore
   (collection-exists-by-name? [db name conn]
@@ -148,33 +158,48 @@
         (e/error :collection-does-not-exist
                  (format "Collection '%s' does not exist" name))))))
 
+  (get-all-collections [db conn]
+    (m/>>= (->> ["SELECT * FROM mammutdb_collections
+                  WHERE database = ?;"
+                 (sproto/get-database-name db)]
+                (sconn/query conn))
+           (fn [results]
+             (m/return (mapv (partial record->collection db) results)))))
+
   (get-collection-by-name [db name conn]
     (m/mlet [safe? (safe-name? name)
              :let  [sql ["SELECT * FROM mammutdb_collections
                           WHERE name = ? AND database = ?"
                          name
                          (sproto/get-database-name db)]]
-             rev   (sconn/query-first conn sql)]
-      (if rev
-        (m/return (sproto/->collection db name :json))
+             rec   (sconn/query-first conn sql)]
+      (if rec
+        (m/return (record->collection db rec))
         (e/error :collection-does-not-exist
                  (format "Collection '%s' does not exist" name)))))
 
   (create-collection! [db name type conn]
     (case type
-      :json (create-json-collection! db name conn)))
-
-  (->collection [db name type]
-    (case type
-      :json (JsonDocumentCollection. db name))))
+      :json (create-json-collection! db name conn))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Aliases
+;; Public Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn ->collection
-  [db name type]
-  (sproto/->collection db name type))
+  ([db name type]
+     (->collection db name type nil {}))
+  ([db name type createdat metadata]
+     (case type
+       :json (JsonDocumentCollection. db name createdat metadata))))
+
+(defn record->collection
+  [db {:keys [name type metadata created_at]}]
+  (->collection db name (keyword type) created_at metadata))
+
+(defn collection?
+  [coll]
+  (satisfies? sproto/Collection coll))
 
 (defn safe-name?
   "Parse collection name and return a safe
@@ -183,6 +208,10 @@
   (if (re-matches *collection-safe-rx* name)
     (t/right true)
     (e/error :collection-name-unsafe)))
+
+(defn get-all
+  [db conn]
+  (sproto/get-all-collections db conn))
 
 (defn exists?
   [db name conn]

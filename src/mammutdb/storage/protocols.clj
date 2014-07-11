@@ -27,8 +27,7 @@
 (defprotocol Database
   "Any database representation type
   should implement this protocol."
-  (get-database-name [_] "Get database name")
-  (get-collections [_ conn] "Get collections."))
+  (get-database-name [_] "Get database name"))
 
 (defprotocol DatabaseMember
   (get-database [_] "Get associated database with current instance."))
@@ -43,7 +42,7 @@
 (defprotocol CollectionStore
   (collection-exists-by-name? [_ name conn] "Check if collection exists.")
   (get-collection-by-name [_ name conn] "Get collection.")
-  (->collection [_ name type] "Collection instance constructor.")
+  (get-all-collections [_ conn] "Get all collections.")
   (create-collection! [_ name type conn] "Create collection."))
 
 (defprotocol Document

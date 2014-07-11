@@ -59,17 +59,6 @@
     (-> (.-name db)
         (str/lower-case)))
 
-  (get-collections [db con]
-    (let [sql ["SELECT name, type FROM mammutdb_collections
-                WHERE database = ? ORDER BY name"
-               (sproto/get-database-name db)]]
-      (m/mlet [results (sconn/query con sql)]
-        (-> (fn [{:keys [name type]}]
-              (case (keyword type)
-                :json (sproto/->collection db name :json)))
-            (mapv results)
-            (m/return)))))
-
   sproto/Droppable
   (drop! [db con]
     (let [sql1 ["DELETE FROM mammutdb_databases WHERE name = ?;"

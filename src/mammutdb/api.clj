@@ -22,32 +22,24 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.api.database
-  (:require [cats.types :as t]
-            [cats.core :as m]
-            [mammutdb.core.errors :as e]
-            [mammutdb.storage.connection :as sconn]
-            [mammutdb.storage.transaction :as stx]
-            [mammutdb.storage.database :as sdb]))
+(ns mammutdb.api
+  (:require [potemkin.namespaces :refer [import-vars]]
+            [mammutdb.api.database :as database]
+            [mammutdb.api.collection :as collection]))
 
-(defn get-all-databases
-  []
-  (->> (fn [conn] (sdb/get-all conn))
-       (stx/transaction {:readonly true})))
+(import-vars
+ [collection
 
-(defn get-db-by-name
-  [name]
-  (->> (fn [conn] (sdb/get-by-name name conn))
-       (stx/transaction {:readonly true})))
+  get-all-collections
+  get-collection-by-name
+  create-collection
+  drop-collection]
 
-(defn create-db
-  [name]
-  (->> (fn [conn] (sdb/create! name conn))
-       (stx/transaction {:readonly false})))
+ [database
 
-(defn drop-db
-  [name]
-  (->> (fn [conn]
-         (m/>>= (sdb/get-by-name name conn)
-                (fn [db] (sdb/drop! db conn))))
-       (stx/transaction {:readonly false})))
+  get-all-databases
+  get-db-by-name
+  create-db
+  drop-db])
+
+
