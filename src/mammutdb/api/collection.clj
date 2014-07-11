@@ -26,6 +26,8 @@
   (:require [cats.types :as t]
             [cats.core :as m]
             [mammutdb.core.errors :as e]
+            [mammutdb.core.safe :refer [check-collection-name-safety
+                                        check-database-name-safety]]
             [mammutdb.storage.connection :as sconn]
             [mammutdb.storage.transaction :as stx]
             [mammutdb.storage.database :as sdb]
@@ -34,28 +36,35 @@
 (defn get-all-collections
   [^String dbname]
   (->> (fn [conn]
-         (m/>>= (sdb/get-by-name dbname conn)
-                (fn [db] (scoll/get-all db conn))))
+         (m/mlet [dbname (check-database-name-safety dbname)
+                  db     (sdb/get-by-name dbname conn)]
+           (scoll/get-all db conn)))
        (stx/transaction {:readonly true})))
 
 (defn get-collection-by-name
   [^String dbname ^String name]
   (->> (fn [conn]
-         (m/>>= (sdb/get-by-name dbname conn)
-                (fn [db] (scoll/get-by-name db name conn))))
+         (m/mlet [dbname (check-database-name-safety dbname)
+                  name   (check-collection-name-safety name)
+                  db     (sdb/get-by-name dbname conn)]
+           (scoll/get-by-name db name conn)))
        (stx/transaction {:readonly true})))
 
 (defn create-collection
   [^String dbname ^String name]
   (->> (fn [conn]
-         (m/>>= (sdb/get-by-name dbname conn)
-                (fn [db] (scoll/create! db name :json conn))))
+         (m/mlet [dbname (check-database-name-safety dbname)
+                  name   (check-collection-name-safety name)
+                  db     (sdb/get-by-name dbname conn)]
+           (scoll/create! db name :json conn)))
        (stx/transaction {:readonly false})))
 
 (defn drop-collection
   [^String dbname ^String name]
   (->> (fn [conn]
-         (m/>>= (sdb/get-by-name dbname conn)
-                (fn [db] (scoll/get-by-name db name conn))
-                (fn [coll] (scoll/drop! coll conn))))
+         (m/mlet [dbname (check-database-name-safety dbname)
+                  name   (check-collection-name-safety name)
+                  db     (sdb/get-by-name dbname conn)
+                  coll   (scoll/get-by-name db name conn)]
+           (scoll/drop! coll conn)))
        (stx/transaction {:readonly false})))
