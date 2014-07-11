@@ -29,17 +29,10 @@
             [clojure.string :as str]
             [mammutdb.core.edn :as edn]
             [mammutdb.core.errors :as e]
-            ;; [mammutdb.storage.types :as stypes]
             [mammutdb.storage.protocols :as sproto]
             [mammutdb.storage.json :as json]
             [mammutdb.storage.errors :as serr]
             [mammutdb.storage.connection :as sconn]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Constants
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def ^:dynamic *database-safe-rx* #"[\w\_\-]+")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Types
@@ -92,51 +85,41 @@
            res  (sconn/query conn sql)]
     (t/right (mapv record->database res))))
 
-(defn safe-name?
-  "Parse collection name and return a safe
-  string or nil."
-  [name]
-  (if (re-matches *database-safe-rx* name)
-    (t/right true)
-    (e/error :database-name-unsafe)))
-
 (defn get-by-name
   [name conn]
-  (m/mlet [_    (safe-name? name)
-           :let [sql ["SELECT id, name, created_at
-                       FROM mammutdb_databases
-                       WHERE name = ?;" name]]
-           res  (sconn/query-first conn sql)]
-    (if res
-      (m/return (record->database res))
-      (e/error :database-does-not-exist))))
+  (m/>>= (->> ["SELECT id, name, created_at
+                FROM mammutdb_databases
+                WHERE name = ?;" name]
+              (sconn/query-first conn))
+         (fn [record]
+           (if record
+             (m/return (record->database record))
+             (e/error :database-does-not-exist)))))
 
 (defn exists?
   "Check if database with given name, are
   previously created."
-  [name con]
-  (m/mlet [safe (safe-name? name)
-           :let [sql ["SELECT EXISTS(SELECT * FROM mammutdb_databases WHERE name = ?);" name]]
-           res  (sconn/query-first con sql)]
-    (if (:exists res)
-      (m/return (->database name))
-      (e/error :database-does-not-exist
-               (format "Database '%s' does not exist" name)))))
+  [^String name conn]
+  (m/>>= (->> ["SELECT EXISTS(SELECT * FROM mammutdb_databases WHERE name = ?);" name]
+              (sconn/query-first conn))
+         (fn [record]
+           (if (:exists record)
+             (m/return name)
+             (e/error :database-does-not-exist
+                      (format "Database '%s' does not exist" name))))))
 
 (defn create!
-  [name conn]
+  [^String name conn]
   (let [sqlexists ["SELECT EXISTS(SELECT * FROM
                     mammutdb_databases WHERE name = ?);" name]
         sqlinsert ["INSERT INTO mammutdb_databases (name) VALUES (?)" name]]
-    (m/>>=
-     (safe-name? name)
-     (fn [_] (sconn/query-first conn sqlexists))
-     (fn [existsresult]
-       (if (:exists existsresult)
-         (e/error :database-exists (format "Database '%s' is already exists." name))
-         (t/right)))
-     (fn [_] (sconn/execute-prepared! conn sqlinsert {:returning :all}))
-     (fn [recs] (m/return (record->database (first recs)))))))
+    (m/>>= (sconn/query-first conn sqlexists)
+           (fn [existsresult]
+             (if (:exists existsresult)
+               (e/error :database-exists (format "Database '%s' is already exists." name))
+               (t/right)))
+           (fn [_] (sconn/execute-prepared! conn sqlinsert {:returning :all}))
+           (fn [recs] (m/return (record->database (first recs)))))))
 
 (defn drop!
   [db con]

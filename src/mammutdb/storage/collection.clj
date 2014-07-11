@@ -42,9 +42,6 @@
 ;; Constants
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:dynamic *collection-safe-rx* #"[\w\_\-]+")
-
-(declare safe-name?)
 (declare ->collection)
 (declare record->collection)
 
@@ -133,13 +130,12 @@
 
 (defn- create-json-collection!
   [db name con]
-  (m/mlet [safe? (safe-name? name)
-           ;; TODO: make collection instance with retrieved data
-           ;; after collection creation in postgresql
-           :let  [coll (->collection db name :json)
-                  sql1 (make-mainstore-sql coll)
-                  sql2 (make-revisions-sql coll)
-                  sql3 (make-persist-collection-sql db coll :json)]]
+  ;; TODO: make collection instance with retrieved data
+  ;; after collection creation in postgresql
+  (let [coll (->collection db name :json)
+        sql1 (make-mainstore-sql coll)
+        sql2 (make-revisions-sql coll)
+        sql3 (make-persist-collection-sql db coll :json)]
     (serr/catch-sqlexception
      (j/execute! con sql1)
      (j/execute! con sql2)
@@ -167,16 +163,15 @@
              (m/return (mapv (partial record->collection db) results)))))
 
   (get-collection-by-name [db name conn]
-    (m/mlet [safe? (safe-name? name)
-             :let  [sql ["SELECT * FROM mammutdb_collections
-                          WHERE name = ? AND database = ?"
-                         name
-                         (sproto/get-database-name db)]]
-             rec   (sconn/query-first conn sql)]
-      (if rec
-        (m/return (record->collection db rec))
-        (e/error :collection-does-not-exist
-                 (format "Collection '%s' does not exist" name)))))
+    (m/>>= (->> ["SELECT * FROM mammutdb_collections
+                  WHERE name = ? AND database = ?" name
+                  (sproto/get-database-name db)]
+                (sconn/query-first conn))
+           (fn [record]
+             (if record
+               (m/return (record->collection db record))
+               (e/error :collection-does-not-exist
+                        (format "Collection '%s' does not exist" name))))))
 
   (create-collection! [db name type conn]
     (case type
@@ -200,14 +195,6 @@
 (defn collection?
   [coll]
   (satisfies? sproto/Collection coll))
-
-(defn safe-name?
-  "Parse collection name and return a safe
-  string or nil."
-  [name]
-  (if (re-matches *collection-safe-rx* name)
-    (t/right true)
-    (e/error :collection-name-unsafe)))
 
 (defn get-all
   [db conn]
