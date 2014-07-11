@@ -35,6 +35,11 @@
   (->> (fn [conn] (sdb/get-all conn))
        (stx/transaction {:readonly true})))
 
+(defn get-by-name
+  [name]
+  (->> (fn [conn] (sdb/get-by-name name conn))
+       (stx/transaction {:readonly true})))
+
 (defn create!
   [name]
   (->> (fn [conn] (sdb/create! name conn))

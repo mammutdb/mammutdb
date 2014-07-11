@@ -114,11 +114,12 @@
 (defn get-by-name
   [name conn]
   (m/mlet [_    (safe-name? name)
-           :let [sql ["SELECT name FROM mammutdb_databases
+           :let [sql ["SELECT id, name, created_at
+                       FROM mammutdb_databases
                        WHERE name = ?;" name]]
            res  (sconn/query-first conn sql)]
     (if res
-      (m/return (->database (:name res)))
+      (m/return (record->database res))
       (e/error :database-does-not-exist))))
 
 (defn exists?
