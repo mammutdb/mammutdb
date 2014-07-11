@@ -22,6 +22,10 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
+;; TODO: move to "proc" ns because exit function is strictly of process
+;; management and it not make sense to be here.
+
 (ns mammutdb.core.util
   "Generic utils namespace.")
 

@@ -26,6 +26,9 @@
   "Generic mammutdb error codes definition."
   (:require [cats.types :as t]))
 
+;; TODO: remove http code from errors. Is responsibility
+;; of transport protocol define them for each error type.
+
 (def ^:dynamic
   *mammutdb-error-codes*
   {:collection-exists
