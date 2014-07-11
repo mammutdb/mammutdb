@@ -66,6 +66,10 @@
 
    :collection-name-unsafe
    {:msg "Collection name is unsafe."
+    :http-code :400}
+
+   :invalid-uuid
+   {:msg "Invalid UUID."
     :http-code :400}})
 
 (defn error

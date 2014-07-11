@@ -24,7 +24,8 @@
 
 (ns mammutdb.core.uuid
   "Uuid monadic constructors."
-  (:require [cats.types :as t]))
+  (:require [cats.types :as t]
+            [mammutdb.core.errors :as e]))
 
 (defn str->uuid
   "Convert string representation of uuid
@@ -38,5 +39,5 @@
   (try
     (t/right (str->uuid uuid))
     (catch IllegalArgumentException e
-      (t/left {:error-code :invalid-uuid
-               :exception  e}))))
+      (e/error :invalid-uuid
+               (format "'%s' is not a valid UUID." uuid)))))
