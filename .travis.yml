@@ -6,7 +6,7 @@ addons:
 
 before_script:
     - createdb mammutdb
-    - psql test -c 'CREATE EXTENSION "uuid-ossp";'
+    - psql mammutdb -c 'CREATE EXTENSION "uuid-ossp";'
 
 jdk:
   - openjdk7
