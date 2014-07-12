@@ -29,6 +29,7 @@
             [com.stuartsierra.component :as component]
             [mammutdb.logging :refer [log]]
             [mammutdb.core.barrier :as barrier]
+            [mammutdb.transports.http.middleware :refer :all]
             [mammutdb.transports.http.routes :refer [main-routes]]))
 
 ;; TODO: reimplement jetty logger and make it logging into
@@ -44,6 +45,7 @@
     (let [app    (-> main-routes
                      (wrap-json-body {:keywords? true :bigdecimals? true})
                      (wrap-json-response {:pretty true})
+                     (wrap-exceptions-handler)
                      (api))
           opts   (assoc options
                    :daemon? true
