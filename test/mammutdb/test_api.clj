@@ -81,4 +81,6 @@
           r  (t/from-either mr)]
       (is (t/right? mr))
       (is (vector? r))
-      (is (= (count r) 0)))))
+      (is (= (count r) 0)))
+
+    (api/drop-db "foodb")))
