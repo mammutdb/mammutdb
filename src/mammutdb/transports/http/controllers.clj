@@ -25,7 +25,7 @@
 (ns mammutdb.transports.http.controllers
   (:require [cats.core :as m]
             [cats.types :as t]
-            [mammutdb.api.database :as dbapi]
+            [mammutdb.api :as api]
             [mammutdb.transports.http.conversions :as conv]
             [mammutdb.transports.http.protocols :refer [to-plain-object]]
             [mammutdb.transports.http.response :refer :all]))
@@ -55,7 +55,7 @@
 
 (defn databases-list
   [request]
-  (let [mresult (dbapi/get-all)
+  (let [mresult (api/get-all-databases)
         result  (t/from-either mresult)]
     (cond
      (t/right? mresult)
@@ -67,7 +67,7 @@
 (defn databases-create
   [{:keys [params] :as req}]
   (let [dbname (:dbname params)
-        result (dbapi/create! dbname)]
+        result (api/create-database dbname)]
     (cond
      (t/right? result)
      (created (to-plain-object (t/from-either result)))
@@ -78,7 +78,7 @@
 (defn databases-drop
   [{:keys [params] :as req}]
   (let [dbname (:dbname params)
-        result (dbapi/drop! dbname)]
+        result (api/drop-database dbname)]
     (cond
      (t/right? result)
      (no-content)
