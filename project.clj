@@ -59,6 +59,7 @@
                  [ring/ring-servlet "1.2.2" :exclusions [javax.servlet/servlet-api]]]
   ;; :aot :all
   ;; :main ^:skip-aot mammutdb.cli
+  :profiles {:uberjar {:main ^:skip-aot mammutdb.cli}}
   :target-path "target/%s"
   :injections [(require '[cats.types :as t])
                (require '[cats.core :as m])])
