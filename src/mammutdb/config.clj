@@ -44,7 +44,9 @@
    :secret-key s/Str
    :storage {:host s/Str
              :port s/Int
-             :dbname s/Str}})
+             :dbname s/Str
+             (s/optional-key :user) s/Str
+             (s/optional-key :password) s/Str}})
 
 (defn validate-config
   [config]
