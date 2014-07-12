@@ -46,6 +46,7 @@
                      (wrap-json-body {:keywords? true :bigdecimals? true})
                      (wrap-json-response {:pretty true})
                      (wrap-exceptions-handler)
+                     (wrap-request-logging)
                      (api))
           opts   (assoc options
                    :daemon? true

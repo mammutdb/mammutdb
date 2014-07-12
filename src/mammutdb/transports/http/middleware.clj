@@ -32,5 +32,15 @@
     (try
       (handler req)
       (catch Exception e
-        (log :error "Unexpected error" e)
+        (log :error "Internal Server Error" e)
         (internal-error (.getMessage e))))))
+
+
+(defn wrap-request-logging
+  [handler]
+  (fn [req]
+    (log :debug (format "Request: %s %s [%s]"
+                        (str (:request-method req))
+                        (str (:uri req))
+                        (str (:query-string req))))
+    (handler req)))
