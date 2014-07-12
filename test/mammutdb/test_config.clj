@@ -1,4 +1,4 @@
-(ns mammutdb.tests-config
+(ns mammutdb.test-config
   (:require [clojure.test :refer :all]
             [clojure.java.io :as io]
             [mammutdb.config :as config]

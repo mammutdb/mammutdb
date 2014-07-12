@@ -1,4 +1,4 @@
-(ns mammutdb.tests-auth
+(ns mammutdb.test-auth
   (:require [clojure.test :refer :all]
             [clojure.java.io :as io]
             [buddy.hashers.bcrypt :as hasher]
