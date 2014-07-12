@@ -29,3 +29,4 @@
 (defn no-content [] {:status 204 :body ""})
 (defn bad-request [d] {:status 400 :body d})
 (defn not-found [d] {:status 404 :body d})
+(defn internal-error [d] {:status 500 :body d})
