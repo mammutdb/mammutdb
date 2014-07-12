@@ -42,46 +42,52 @@
 (defn- make-logger-formatter
   []
   (let [tz    (time/default-time-zone)
-        tf    (tfmt/with-zone (tfmt/formatters :date-time) tz)
-        fmtr  (proxy [Formatter] []
-                (format [^LogRecord rec]
-                  (let [now     (time/now)
-                        timestr (tfmt/unparse tf now)]
-                    (format "[%s] %s: %s\n" timestr (.getLevel rec) (.getMessage rec)))))]
-    (t/just fmtr)))
+        tf    (tfmt/with-zone (tfmt/formatters :date-time) tz)]
+    (proxy [Formatter] []
+      (format [^LogRecord rec]
+        (let [now  (time/now)
+              tstr (tfmt/unparse tf now)]
+          (if-let [thr (.getThrown rec)]
+            (let [sw (java.io.StringWriter.)
+                  pw (java.io.PrintWriter. sw)]
+              (.printStackTrace thr pw)
+              (.close pw)
+              (format "[%s] %s: %s\n%s\n" tstr
+                      (.getLevel rec)
+                      (.getMessage rec)
+                      (.toString sw)))
+            (format "[%s] %s: %s\n" tstr
+                    (.getLevel rec)
+                    (.getMessage rec))))))))
 
 (defn make-logger-handler
   [formatter]
-  (-> (doto (ConsoleHandler.)
-        (.setLevel Level/ALL)
-        (.setFormatter formatter))
-      (t/just)))
+  (doto (ConsoleHandler.)
+    (.setLevel Level/ALL)
+    (.setFormatter formatter)))
 
 (defn make-logger
   [handler]
-  (-> (doto (Logger/getAnonymousLogger)
-        (.setUseParentHandlers false)
-        (.setLevel Level/ALL)
-        (.addHandler handler))
-      (t/just)))
+  (doto (Logger/getAnonymousLogger)
+    (.setUseParentHandlers false)
+    (.setLevel Level/ALL)
+    (.addHandler handler)))
 
 (def ^{:dynamic :true
        :doc "Lazzy logger constructor"}
   *logger*
-  (delay (-> (m/>>= (make-logger-formatter)
-                    make-logger-handler
-                    make-logger)
-             (t/from-maybe))))
+  (delay (-> (make-logger-formatter)
+             (make-logger-handler)
+             (make-logger))))
 
 (defn log
-  [level message & params]
+  [level message & [exception]]
   (send-off *logger-writer*
             (fn [v & args]
-              (let [message (apply format message params)]
-                (case level
-                  :info (.info @*logger* message)
-                  :error (.log @*logger* Level/SEVERE message)
-                  :debug (.fine @*logger* message)
-                  :warn (.warning @*logger* message)))
+              (case level
+                :info (.log @*logger* Level/INFO message exception)
+                :error (.log @*logger* Level/SEVERE message exception)
+                :debug (.log @*logger* Level/FINE message exception)
+                :warn (.log @*logger* Level/WARNING message exception))
               (inc v)))
   (t/right nil))
