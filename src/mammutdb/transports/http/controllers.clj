@@ -32,7 +32,10 @@
 
 (defn home-ctrl
   [request]
-  (ok {:server "MammutDB 1.0-SNAPSHOT"}))
+  (ok {:server "MammutDB 1.0-SNAPSHOT"
+       :apiurls ["/databases"
+                 "/databases/:dbname"
+                 "/databases/:dbname/:collname"]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Error Handling
