@@ -38,6 +38,6 @@
  [database
 
   get-all-databases
-  get-db-by-name
-  create-db
-  drop-db])
+  get-database-by-name
+  create-database
+  drop-database])

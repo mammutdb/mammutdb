@@ -35,21 +35,21 @@
   (->> (fn [conn] (storage/get-all-databases conn))
        (stx/transaction {:readonly true})))
 
-(defn get-db-by-name
+(defn get-database-by-name
   [name]
   (->> (fn [conn]
          (m/>>= (check-database-name-safety name)
                 (fn [name] (storage/get-database-by-name name conn))))
        (stx/transaction {:readonly true})))
 
-(defn create-db
+(defn create-database
   [name]
   (->> (fn [conn]
          (m/>>= (check-database-name-safety name)
                 (fn [name] (storage/create-database name conn))))
        (stx/transaction {:readonly false})))
 
-(defn drop-db
+(defn drop-database
   [name]
   (->> (fn [conn]
          (m/>>= (check-database-name-safety name)
