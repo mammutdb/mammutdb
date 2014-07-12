@@ -37,7 +37,10 @@
                                   :subname (format "//%s:%s/%s"
                                                    (:host storageconf)
                                                    (:port storageconf)
-                                                   (:dbname storageconf))}]
+                                                   (:dbname storageconf))
+                                  :user (:user storageconf)
+                                  :password (:password storageconf)}]
+                      (println (str "Connecting... " (:subname dbspec)))
                       (pool/make-datasource-spec dbspec))))
 
 (defn new-connection
