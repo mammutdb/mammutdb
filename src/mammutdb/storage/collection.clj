@@ -140,7 +140,7 @@
      (j/execute! con sql1)
      (j/execute! con sql2)
      (j/execute-prepared! con sql3)
-     (m/return coll))))
+     (t/right coll))))
 
 (extend-type Database
   sproto/CollectionStore
