@@ -57,7 +57,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn databases-list
-  [request]
+  [req]
   (let [mresult (api/get-all-databases)
         result  (t/from-either mresult)]
     (cond
@@ -88,3 +88,43 @@
 
      (t/left? result)
      (left-as-response result))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Collection Api
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn collection-list
+  [{:keys [params] :as req}]
+  (let [dbname (:dbname params)
+        result (api/get-all-collections dbname)]
+    (cond
+     (t/right? result)
+     (ok (mapv to-plain-object (t/from-either result)))
+
+     (t/left? result)
+     (left-as-response result))))
+
+(defn collection-create
+  [{:keys [params] :as req}]
+  (let [dbname   (:dbname params)
+        collname (:collname params)
+        result   (api/create-collection dbname collname)]
+    (cond
+     (t/right? result)
+     (created (to-plain-object (t/from-either result)))
+
+     (t/left? result)
+     (left-as-response result))))
+
+(defn collection-drop
+  [{:keys [params] :as req}]
+  (let [dbname   (:dbname params)
+        collname (:collname params)
+        result (api/drop-collection dbname collname)]
+    (cond
+     (t/right? result)
+     (no-content)
+
+     (t/left? result)
+     (left-as-response result))))
+

@@ -31,5 +31,13 @@
   mammutdb.storage.database.Database
   (to-plain-object [db]
     {:name (.-name db)
-     :id (.-id db)
-     :createdAt (.-createdat db)}))
+     :id (.-name db)
+     :createdAt (.-createdat db)})
+
+  mammutdb.storage.collection.JsonDocumentCollection
+  (to-plain-object [collection]
+    {:id (.-name collection)
+     :name (.-name collection)
+     :createdAt (.-createdat collection)
+     :database (.-name (.-database collection))
+     :type :json}))

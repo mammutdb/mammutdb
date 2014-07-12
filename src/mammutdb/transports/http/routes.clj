@@ -29,6 +29,11 @@
 
 (defroutes main-routes
   (ANY "/" [] ctrl/home-ctrl)
-  (GET "/dbs" [] ctrl/databases-list)
-  (PUT "/dbs/:dbname" [] ctrl/databases-create)
-  (DELETE "/dbs/:dbname" [] ctrl/databases-drop))
+
+  (GET "/databases" [] ctrl/databases-list)
+  (PUT "/databases/:dbname" [] ctrl/databases-create)
+  (DELETE "/databases/:dbname" [] ctrl/databases-drop)
+
+  (GET "/databases/:dbname" [] ctrl/collection-list)
+  (PUT "/databases/:dbname/:collname" [] ctrl/collection-create)
+  (DELETE "/databases/:dbname/:collname" [] ctrl/collection-drop))
