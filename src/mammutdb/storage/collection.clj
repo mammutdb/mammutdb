@@ -74,7 +74,7 @@
     (.-name coll))
 
   sproto/Droppable
-  (drop! [coll con]
+  (drop [coll con]
     (let [collnane (sproto/get-collection-name coll)
           dbname   (sproto/get-database-name database)
           tblmain  (sproto/get-mainstore-tablename coll)
@@ -128,7 +128,7 @@
    (sproto/get-collection-name coll)
    (sproto/get-database-name db)])
 
-(defn- create-json-collection!
+(defn- create-json-collection
   [db name con]
   ;; TODO: make collection instance with retrieved data
   ;; after collection creation in postgresql
@@ -173,9 +173,9 @@
                (e/error :collection-does-not-exist
                         (format "Collection '%s' does not exist" name))))))
 
-  (create-collection! [db name type conn]
+  (create-collection [db name type conn]
     (case type
-      :json (create-json-collection! db name conn))))
+      :json (create-json-collection db name conn))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public Api
@@ -196,23 +196,23 @@
   [coll]
   (satisfies? sproto/Collection coll))
 
-(defn get-all
+(defn get-all-collections
   [db conn]
   (sproto/get-all-collections db conn))
 
-(defn exists?
+(defn collection-exists?
   [db name conn]
   (sproto/collection-exists-by-name? db name conn))
 
-(defn get-by-name
+(defn get-collection-by-name
   "Get collection by its name."
   [db name conn]
   (sproto/get-collection-by-name db name conn))
 
-(defn create!
+(defn create-collection
   [db name type conn]
-  (sproto/create-collection! db name type conn))
+  (sproto/create-collection db name type conn))
 
-(defn drop!
+(defn drop-collection
   [coll con]
-  (sproto/drop! coll con))
+  (sproto/drop coll con))

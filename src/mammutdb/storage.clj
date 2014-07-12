@@ -22,38 +22,70 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.storage.types
-  (:require [clojure.string :as str]
-            [mammutdb.storage.protocols :as sproto]))
+(ns mammutdb.storage
+  (:require [potemkin.namespaces :refer [import-vars]]
+            [mammutdb.storage.user :as user]
+            [mammutdb.storage.document :as document]
+            [mammutdb.storage.transaction :as transaction]
+            [mammutdb.storage.connection :as connection]
+            [mammutdb.storage.database :as database]
+            [mammutdb.storage.collection :as collection]))
 
-(deftype User [id username password token]
-  Object
-  (equals [_ other]
-    (= id (.-id other)))
+(import-vars
+ [document
+  ->document
+  persist-document
+  get-document-by-id]
 
-  (toString [_]
-    (with-out-str
-      (print [id username]))))
+ [collection
 
-(alter-meta! #'->User assoc :no-doc true :private true)
+  ->collection
+  record->collection
 
-(defn user?
-  [v]
-  (instance? User v))
+  collection?
+  collection-exists?
+  get-all-collections
+  get-collection-by-name
+  create-collection
+  drop-collection]
 
-(defn ->user
-  "Default user constructor."
-  ([^User user token]
-     (assert (user? user))
-     (User. (.-id user)
-            (.-username user)
-            (.-password user)
-            token))
-  ([^Long id ^String username ^String password]
-     (User. id username password nil))
-  ([^Long id ^String username ^String password ^String token]
-     (User. id username password token)))
+ [database
 
-(defn map->user
-  [{:keys [id username password]}]
-  (->user id username password))
+  ->database
+  record->database
+
+  database?
+  database-exists?
+
+  get-all-databases
+  get-database-by-name
+  create-database
+  drop-database]
+
+ [connection
+
+  new-connection
+  close-connection
+  query
+  query-first
+  execute-prepared!]
+
+ [transaction
+
+  run-in-transaction
+  transaction]
+
+ [user
+
+  ->user
+  record->user
+
+  user?
+  user-exists?
+
+  get-user-by-username
+  get-user-by-id
+
+  user-exists?
+  create-user
+  drop-user])

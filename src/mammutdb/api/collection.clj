@@ -28,6 +28,7 @@
             [mammutdb.core.errors :as e]
             [mammutdb.core.safe :refer [check-collection-name-safety
                                         check-database-name-safety]]
+            [mammutdb.storage :as storage]
             [mammutdb.storage.connection :as sconn]
             [mammutdb.storage.transaction :as stx]
             [mammutdb.storage.database :as sdb]
@@ -37,8 +38,8 @@
   [^String dbname]
   (->> (fn [conn]
          (m/mlet [dbname (check-database-name-safety dbname)
-                  db     (sdb/get-by-name dbname conn)]
-           (scoll/get-all db conn)))
+                  db     (storage/get-database-by-name dbname conn)]
+           (storage/get-all-collections db conn)))
        (stx/transaction {:readonly true})))
 
 (defn get-collection-by-name
@@ -46,8 +47,8 @@
   (->> (fn [conn]
          (m/mlet [dbname (check-database-name-safety dbname)
                   name   (check-collection-name-safety name)
-                  db     (sdb/get-by-name dbname conn)]
-           (scoll/get-by-name db name conn)))
+                  db     (storage/get-database-by-name dbname conn)]
+           (storage/get-collection-by-name db name conn)))
        (stx/transaction {:readonly true})))
 
 (defn create-collection
@@ -55,8 +56,8 @@
   (->> (fn [conn]
          (m/mlet [dbname (check-database-name-safety dbname)
                   name   (check-collection-name-safety name)
-                  db     (sdb/get-by-name dbname conn)]
-           (scoll/create! db name :json conn)))
+                  db     (storage/get-database-by-name dbname conn)]
+           (storage/create-collection db name :json conn)))
        (stx/transaction {:readonly false})))
 
 (defn drop-collection
@@ -64,7 +65,7 @@
   (->> (fn [conn]
          (m/mlet [dbname (check-database-name-safety dbname)
                   name   (check-collection-name-safety name)
-                  db     (sdb/get-by-name dbname conn)
-                  coll   (scoll/get-by-name db name conn)]
-           (scoll/drop! coll conn)))
+                  db     (storage/get-database-by-name dbname conn)
+                  coll   (storage/get-collection-by-name db name conn)]
+           (storage/drop-collection coll conn)))
        (stx/transaction {:readonly false})))

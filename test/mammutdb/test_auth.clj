@@ -8,8 +8,7 @@
             [jdbc.core :as j]
             [mammutdb.config :as config]
             [mammutdb.auth :as auth]
-            [mammutdb.storage.types :as stypes]
-            [mammutdb.storage.user :as suser]
+            [mammutdb.storage :as storage]
             [mammutdb.storage.migrations :as migrations]
             [mammutdb.storage.connection :as sconn]))
 
@@ -20,17 +19,17 @@
   (config/setup-config! "test/testconfig.edn")
 
   (testing "Authenticate credentials"
-    (with-redefs [suser/get-user-by-username
+    (with-redefs [storage/get-user-by-username
                   (fn [username conn]
-                    (t/right (stypes/->user 1 username password)))]
+                    (t/right (storage/->user 1 username password)))]
       (let [user (auth/authenticate-credentials "username" "secret")]
         (is (t/right? user))
-        (is (stypes/user? (.v user))))))
+        (is (storage/user? (.v user))))))
 
   (testing "Authenticate token"
-    (with-redefs [suser/get-user-by-id
+    (with-redefs [storage/get-user-by-id
                   (fn [id conn]
-                    (t/right (stypes/->user id "username" password)))]
+                    (t/right (storage/->user id "username" password)))]
       (let [token (@#'auth/make-access-token 1)
             user  (auth/authenticate-token (t/from-either token))]
         (is (t/right? user))
@@ -43,13 +42,13 @@
 
   (testing "Creating/Deleting users"
     (with-open [conn (j/make-connection @sconn/datasource)]
-      (let [mr (suser/create! "test" "test" conn)
+      (let [mr (storage/create-user "test" "test" conn)
             r  (t/from-either mr)]
         (is (t/right? mr))
-        (is (stypes/user? r))
+        (is (storage/user? r))
         (is (.-username r) "test")
-        (suser/drop! r conn))
-      (let [mr (suser/exists? "test" conn)
+        (storage/drop-user r conn))
+      (let [mr (storage/user-exists? "test" conn)
             r  (t/from-either mr)]
         (is (t/left? mr))
         (is (= (:error-code r) :user-does-not-exist))))))

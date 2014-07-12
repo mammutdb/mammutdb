@@ -41,5 +41,3 @@
   get-db-by-name
   create-db
   drop-db])
-
-

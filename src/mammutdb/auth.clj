@@ -30,9 +30,7 @@
             [buddy.sign.jws :as jws]
             [mammutdb.config :as config]
             [mammutdb.core.errors :as e]
-            [mammutdb.storage.user :as suser]
-            [mammutdb.storage.types :as stypes]
-            [mammutdb.storage.connection :as sconn]))
+            [mammutdb.storage :as storage]))
 
 (def secret-key
   (delay (let [cfg @config/*config*]
@@ -73,18 +71,18 @@
   "Given user credentials, authenticate them and return
   user record with access token."
   [^String username ^String password]
-  (m/mlet [conn  (sconn/new-connection)
-           user  (suser/get-user-by-username username conn)
+  (m/mlet [conn  (storage/new-connection)
+           user  (storage/get-user-by-username username conn)
            ok    (check-user-password user password)
            token (make-access-token (.-id user))
-           _     (sconn/close-connection conn)]
-    (m/return (stypes/->user user token))))
+           _     (storage/close-connection conn)]
+    (m/return (storage/->user user token))))
 
 (defn authenticate-token
   "Given a token, return a user record for it or fail."
   [^String token]
-  (m/mlet [conn   (sconn/new-connection)
+  (m/mlet [conn   (storage/new-connection)
            userid (validate-access-token token)
-           user   (suser/get-user-by-id userid conn)
-           _      (sconn/close-connection conn)]
+           user   (storage/get-user-by-id userid conn)
+           _      (storage/close-connection conn)]
     (m/return user)))

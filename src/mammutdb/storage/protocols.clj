@@ -22,7 +22,8 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.storage.protocols)
+(ns mammutdb.storage.protocols
+  (:refer-clojure :exclude [drop]))
 
 (defprotocol Database
   "Any database representation type
@@ -43,7 +44,7 @@
   (collection-exists-by-name? [_ name conn] "Check if collection exists.")
   (get-collection-by-name [_ name conn] "Get collection.")
   (get-all-collections [_ conn] "Get all collections.")
-  (create-collection! [_ name type conn] "Create collection."))
+  (create-collection [_ name type conn] "Create collection."))
 
 (defprotocol Document
   "Any document representation type
@@ -54,11 +55,11 @@
 (defprotocol DocumentStore
   (record->document [_ rec] "Buld document from record")
   (->document [_ id rev data createdat] "Build document from data.")
-  (persist! [_ doc conn] "Persist document"))
+  (persist-document [_ doc conn] "Persist document"))
 
 (defprotocol DocumentQueryable
-  (get-by-rev [_ id rev conn] "Search document by id and rev")
-  (get-by-id [_ id conn] "Get document by id"))
+  (get-document-by-rev [_ id rev conn] "Search document by id and rev")
+  (get-document-by-id [_ id conn] "Get document by id"))
 
 ;; (defprotocol DocumentRichQueryable
 ;;   (filter-by-key [
@@ -66,4 +67,4 @@
 (defprotocol Droppable
   "Any thing that can be droppable
   should implement this protocol."
-  (drop! [_ conn] "Drop element"))
+  (drop [_ conn] "Drop element"))

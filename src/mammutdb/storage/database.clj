@@ -53,7 +53,7 @@
         (str/lower-case)))
 
   sproto/Droppable
-  (drop! [db con]
+  (drop [db con]
     (let [sql1 ["DELETE FROM mammutdb_databases WHERE name = ?;"
                 (sproto/get-database-name db)]]
       (serr/catch-sqlexception
@@ -78,14 +78,14 @@
   [v]
   (instance? Database v))
 
-(defn get-all
+(defn get-all-databases
   [conn]
   (m/mlet [:let [sql "SELECT id, name, created_at
                       FROM mammutdb_databases ORDER BY name;"]
            res  (sconn/query conn sql)]
     (t/right (mapv record->database res))))
 
-(defn get-by-name
+(defn get-database-by-name
   [name conn]
   (m/>>= (->> ["SELECT id, name, created_at
                 FROM mammutdb_databases
@@ -96,7 +96,7 @@
              (m/return (record->database record))
              (e/error :database-does-not-exist)))))
 
-(defn exists?
+(defn database-exists?
   "Check if database with given name, are
   previously created."
   [^String name conn]
@@ -108,7 +108,7 @@
              (e/error :database-does-not-exist
                       (format "Database '%s' does not exist" name))))))
 
-(defn create!
+(defn create-database
   [^String name conn]
   (let [sqlexists ["SELECT EXISTS(SELECT * FROM
                     mammutdb_databases WHERE name = ?);" name]
@@ -121,7 +121,7 @@
            (fn [_] (sconn/execute-prepared! conn sqlinsert {:returning :all}))
            (fn [recs] (m/return (record->database (first recs)))))))
 
-(defn drop!
+(defn drop-database
   [db con]
-  (sproto/drop! db con))
+  (sproto/drop db con))
 

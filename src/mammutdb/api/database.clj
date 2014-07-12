@@ -27,33 +27,32 @@
             [cats.core :as m]
             [mammutdb.core.errors :as e]
             [mammutdb.core.safe :refer [check-database-name-safety]]
-            [mammutdb.storage.connection :as sconn]
-            [mammutdb.storage.transaction :as stx]
-            [mammutdb.storage.database :as sdb]))
+            [mammutdb.storage :as storage]
+            [mammutdb.storage.transaction :as stx]))
 
 (defn get-all-databases
   []
-  (->> (fn [conn] (sdb/get-all conn))
+  (->> (fn [conn] (storage/get-all-databases conn))
        (stx/transaction {:readonly true})))
 
 (defn get-db-by-name
   [name]
   (->> (fn [conn]
          (m/>>= (check-database-name-safety name)
-                (fn [name] (sdb/get-by-name name conn))))
+                (fn [name] (storage/get-database-by-name name conn))))
        (stx/transaction {:readonly true})))
 
 (defn create-db
   [name]
   (->> (fn [conn]
          (m/>>= (check-database-name-safety name)
-                (fn [name] (sdb/create! name conn))))
+                (fn [name] (storage/create-database name conn))))
        (stx/transaction {:readonly false})))
 
 (defn drop-db
   [name]
   (->> (fn [conn]
          (m/>>= (check-database-name-safety name)
-                (fn [name] (sdb/get-by-name name conn))
-                (fn [db] (sdb/drop! db conn))))
+                (fn [name] (storage/get-database-by-name name conn))
+                (fn [db] (storage/drop-database db conn))))
        (stx/transaction {:readonly false})))

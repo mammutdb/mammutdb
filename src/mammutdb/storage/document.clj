@@ -65,7 +65,7 @@
     (sproto/get-database (.-collection doc))))
 
 ;; The following code is the concrete implementation
-;; of persist! for json based documents. At this momment
+;; of persistese for json based documents. At this momment
 ;; it located on this file but in future it can be moved
 ;; to own namespace, allowing so support multiple
 ;; document types.
@@ -120,7 +120,7 @@
 
 (extend-type JsonDocumentCollection
   sproto/DocumentStore
-  (persist! [coll doc conn]
+  (persist-document [coll doc conn]
     (let [timestamp (jt/now)
           forupdate (not (nil? (.-id doc)))]
       (m/>>= (t/just doc)
@@ -136,14 +136,14 @@
     (JsonDocument. coll id rev data createdat))
 
   sproto/DocumentQueryable
-  (get-by-id [coll id conn]
+  (get-document-by-id [coll id conn]
     (m/mlet [rec (-<> (sproto/get-mainstore-tablename coll)
                       (format "SELECT * FROM %s WHERE id = ?;" <>)
                       (vector <> id)
                       (sconn/query-first conn <>))]
       (m/return (sproto/record->document coll rec))))
 
-  (get-by-rev [coll id rev conn]
+  (get-document-by-rev [coll id rev conn]
     (m/mlet [rec (-<> (sproto/get-mainstore-tablename coll)
                       (format "SELECT * FROM %s WHERE id = ? AND revision = ?;" <>)
                       (vector <> id rev)
@@ -153,17 +153,17 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Aliases
+;; Public Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn ->document
   [& args]
   (apply sproto/->document args))
 
-(defn persist!
+(defn persist-document
   [& args]
-  (apply sproto/persist! args))
+  (apply sproto/persist-document args))
 
-(defn get-by-id
+(defn get-document-by-id
   [& args]
-  (apply sproto/get-by-id args))
+  (apply sproto/get-document-by-id args))
