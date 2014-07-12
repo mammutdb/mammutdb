@@ -17,13 +17,6 @@
   (config/setup-config! "test/testconfig.edn")
   (migrations/bootstrap)
 
-  (testing "Database name safety"
-    (is (t/right? (sdb/safe-name? "testdbname")))
-    (let [r (sdb/safe-name? "dbname@")
-          i (t/from-either r)]
-      (is (t/left? r))
-      (is (= (:error-code i) :database-name-unsafe))))
-
   (testing "Not existence of database"
     (with-open [conn (j/make-connection @sconn/datasource)]
       (let [mr (sdb/exists? "notexistsdb" conn)
@@ -75,13 +68,6 @@
   ;; Setup
   (config/setup-config! "test/testconfig.edn")
   (migrations/bootstrap)
-
-  (testing "Collections name safety"
-    (is (t/right? (scoll/safe-name? "testcollname")))
-    (let [r (scoll/safe-name? "ddd@ddd")
-          i (t/from-either r)]
-      (is (t/left? r))
-      (is (= (:error-code i) :collection-name-unsafe))))
 
   (testing "Not existence of one collection"
     (with-open [conn (j/make-connection @sconn/datasource)]
