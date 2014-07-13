@@ -31,7 +31,7 @@
             [mammutdb.core.edn :as edn]
             [mammutdb.core.errors :as e]
             [mammutdb.storage.database :as sdb]
-            [mammutdb.storage.protocols :as sproto]
+            [mammutdb.storage.protocols :as sp]
             [mammutdb.storage.json :as json]
             [mammutdb.storage.errors :as serr]
             [mammutdb.storage.connection :as sconn])
@@ -52,32 +52,34 @@
   java.lang.Object
   (toString [_]
     (with-out-str
-      (print [(sproto/get-database-name database) name])))
+      (print [(sp/get-database-name database) name])))
 
   (equals [_ other]
     (and (= name (.-name other))
          (= database (.database other))))
 
-  sproto/Collection
+  sp/Collection
+
   (get-mainstore-tablename [coll]
     (format "%s_%s_storage"
-            (sproto/get-database-name (.-database coll))
-            (sproto/get-collection-name coll)))
+            (sp/get-database-name (.-database coll))
+            (sp/get-collection-name coll)))
 
   (get-revisions-tablename [coll]
     (format "%s_%s_revisions"
-            (sproto/get-database-name (sproto/get-database coll))
-            (sproto/get-collection-name coll)))
+            (sp/get-database-name (sp/get-database coll))
+            (sp/get-collection-name coll)))
 
   (get-collection-name [coll]
     (.-name coll))
 
-  sproto/Droppable
+  sp/Droppable
+
   (drop [coll con]
-    (let [collnane (sproto/get-collection-name coll)
-          dbname   (sproto/get-database-name database)
-          tblmain  (sproto/get-mainstore-tablename coll)
-          tblrev   (sproto/get-revisions-tablename coll)
+    (let [collnane (sp/get-collection-name coll)
+          dbname   (sp/get-database-name database)
+          tblmain  (sp/get-mainstore-tablename coll)
+          tblrev   (sp/get-revisions-tablename coll)
           sql1     ["DELETE FROM mammutdb_collections
                      WHERE name = ? AND database = ?;"
                      collnane
@@ -90,11 +92,11 @@
        (j/execute-prepared! con sql1)
        (t/right))))
 
-  sproto/DatabaseMember
+  sp/DatabaseMember
   (get-database [coll]
     (.-database coll))
 
-  sproto/Serializable
+  sp/Serializable
   (to-plain-object [collection]
     {:id (.-name collection)
      :name (.-name collection)
@@ -109,7 +111,7 @@
 
 (defn- make-mainstore-sql
   [coll]
-  (->> (sproto/get-mainstore-tablename coll)
+  (->> (sp/get-mainstore-tablename coll)
        (format "CREATE TABLE %s (
                  id varchar(2048) UNIQUE PRIMARY KEY,
                  data json,
@@ -120,7 +122,7 @@
 
 (defn- make-revisions-sql
   [coll]
-  (->> (sproto/get-revisions-tablename coll)
+  (->> (sp/get-revisions-tablename coll)
        (format "CREATE TABLE %s (
                  id varchar(2048),
                  data json,
@@ -135,8 +137,8 @@
   ["INSERT INTO mammutdb_collections (type, name, database)
     VALUES (?, ?, ?);"
    (name type)
-   (sproto/get-collection-name coll)
-   (sproto/get-database-name db)])
+   (sp/get-collection-name coll)
+   (sp/get-database-name db)])
 
 (defn- create-json-collection
   [db name con]
@@ -153,21 +155,22 @@
      (t/right coll))))
 
 (extend-type Database
-  sproto/CollectionStore
+  sp/CollectionStore
+
   (collection-exists-by-name? [db name conn]
-    (let [sql "SELECT EXISTS(SELECT * FROM mammutdb_collections
-               WHERE name = ? AND database = ?);"
-          sql [sql name (sproto/get-database-name db)]]
-    (m/mlet [res (sconn/query-first conn sql)]
+    (m/mlet [:let [dbname (sp/get-database-name db)]
+             res  (->> ["SELECT EXISTS(SELECT * FROM mammutdb_collections
+                         WHERE name = ? AND database = ?);" name dbname]
+                       (sconn/query-first conn))]
       (if (:exists res)
         (m/return name)
         (e/error :collection-does-not-exist
-                 (format "Collection '%s' does not exist" name))))))
+                 (format "Collection '%s' does not exist" name)))))
 
   (get-all-collections [db conn]
     (m/>>= (->> ["SELECT * FROM mammutdb_collections
                   WHERE database = ?;"
-                 (sproto/get-database-name db)]
+                 (sp/get-database-name db)]
                 (sconn/query conn))
            (fn [results]
              (m/return (mapv (partial record->collection db) results)))))
@@ -175,7 +178,7 @@
   (get-collection-by-name [db name conn]
     (m/>>= (->> ["SELECT * FROM mammutdb_collections
                   WHERE name = ? AND database = ?" name
-                  (sproto/get-database-name db)]
+                  (sp/get-database-name db)]
                 (sconn/query-first conn))
            (fn [record]
              (if record
@@ -207,25 +210,25 @@
 
 (defn collection?
   [coll]
-  (satisfies? sproto/Collection coll))
+  (satisfies? sp/Collection coll))
 
 (defn get-all-collections
   [db conn]
-  (sproto/get-all-collections db conn))
+  (sp/get-all-collections db conn))
 
 (defn collection-exists?
   [db name conn]
-  (sproto/collection-exists-by-name? db name conn))
+  (sp/collection-exists-by-name? db name conn))
 
 (defn get-collection-by-name
   "Get collection by its name."
   [db name conn]
-  (sproto/get-collection-by-name db name conn))
+  (sp/get-collection-by-name db name conn))
 
 (defn create-collection
   [db name type conn]
-  (sproto/create-collection db name type conn))
+  (sp/create-collection db name type conn))
 
 (defn drop-collection
   [coll con]
-  (sproto/drop coll con))
+  (sp/drop coll con))
