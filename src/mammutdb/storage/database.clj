@@ -29,7 +29,7 @@
             [clojure.string :as str]
             [mammutdb.core.edn :as edn]
             [mammutdb.core.errors :as e]
-            [mammutdb.storage.protocols :as sproto]
+            [mammutdb.storage.protocols :as sp]
             [mammutdb.storage.json :as json]
             [mammutdb.storage.errors :as serr]
             [mammutdb.storage.connection :as sconn]))
@@ -47,18 +47,24 @@
   (equals [_ other]
     (= name (.-name other)))
 
-  sproto/Database
+  sp/Database
   (get-database-name [db]
     (-> (.-name db)
         (str/lower-case)))
 
-  sproto/Droppable
+  sp/Droppable
   (drop [db con]
     (let [sql1 ["DELETE FROM mammutdb_databases WHERE name = ?;"
-                (sproto/get-database-name db)]]
+                (sp/get-database-name db)]]
       (serr/catch-sqlexception
        (j/execute-prepared! con sql1)
-       (t/right)))))
+       (t/right))))
+
+  sp/Serializable
+  (to-plain-object [db]
+    {:name (.-name db)
+     :id (.-name db)
+     :createdAt (.-createdat db)}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Aliases
@@ -123,5 +129,5 @@
 
 (defn drop-database
   [db con]
-  (sproto/drop db con))
+  (sp/drop db con))
 

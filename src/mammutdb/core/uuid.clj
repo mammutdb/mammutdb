@@ -27,17 +27,23 @@
   (:require [cats.types :as t]
             [mammutdb.core.errors :as e]))
 
-(defn str->uuid
-  "Convert string representation of uuid
-  in java.util.UUID instance."
-  [^String uuid]
-  (java.util.UUID/fromString uuid))
+(defn random-uuid
+  "Generate a random uuid (type 4)"
+  []
+  (-> (java.util.UUID/randomUUID)
+      (.toString)))
 
-(defn str->muuid
-  "Same as str->uuid but return monadic value."
-  [^String uuid]
-  (try
-    (t/right (str->uuid uuid))
-    (catch IllegalArgumentException e
-      (e/error :invalid-uuid
-               (format "'%s' is not a valid UUID." uuid)))))
+;; (defn str->uuid
+;;   "Convert string representation of uuid
+;;   in java.util.UUID instance."
+;;   [^String uuid]
+;;   (java.util.UUID/fromString uuid))
+
+;; (defn str->muuid
+;;   "Same as str->uuid but return monadic value."
+;;   [^String uuid]
+;;   (try
+;;     (t/right (str->uuid uuid))
+;;     (catch IllegalArgumentException e
+;;       (e/error :invalid-uuid
+;;                (format "'%s' is not a valid UUID." uuid)))))

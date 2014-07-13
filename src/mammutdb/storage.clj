@@ -24,6 +24,7 @@
 
 (ns mammutdb.storage
   (:require [potemkin.namespaces :refer [import-vars]]
+            [mammutdb.storage.protocols :as protocols]
             [mammutdb.storage.user :as user]
             [mammutdb.storage.document :as document]
             [mammutdb.storage.transaction :as transaction]
@@ -32,10 +33,17 @@
             [mammutdb.storage.collection :as collection]))
 
 (import-vars
+ [protocols
+
+  to-plain-object]
+
  [document
-  ->document
-  persist-document
-  get-document-by-id]
+
+  document?
+  json->document
+  persist-document]
+  ;; get-document-by-id
+  ;; get-document-by-rev]
 
  [collection
 

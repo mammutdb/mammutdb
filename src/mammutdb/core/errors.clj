@@ -71,8 +71,8 @@
    {:msg "Collection name is unsafe."
     :http-code :400}
 
-   :invalid-uuid
-   {:msg "Invalid UUID."
+   :invalid-rev-format
+   {:msg "rev field has invalid format."
     :http-code :400}})
 
 (defn error

@@ -24,34 +24,34 @@
 
 (ns mammutdb.api.documents
   (:require [cats.types :as t]
-            [cats.core :as m]))
+            [cats.core :as m]
+            [mammutdb.core.errors :as e]
+            [mammutdb.core.safe :refer [check-collection-name-safety
+                                        check-database-name-safety]]
+            [mammutdb.storage :as s]))
 
 
+(defn persist-document
+  ([^String db ^String coll data]
+     (persist-document db coll data {}))
+  ([^String db ^String coll data opts]
+     (->> (fn [conn]
+            (m/mlet [dbname (check-database-name-safety db)
+                     name   (check-collection-name-safety coll)
+                     db     (s/get-database-by-name dbname conn)
+                     coll   (s/get-collection-by-name db coll conn)]
+              (s/persist-document coll opts data conn)))
+          (s/transaction {:readonly false}))))
 
-;;             [mammutdb.storage.connection :as conn]
-;;             [mammutdb.storage.collections :as scoll]
-;;             [mammutdb.storage.documents :as sdoc]
-;;             [mammutdb.storage.transaction :as stx]
-;;             [mammutdb.core.edn :as edn]
-;;             [mammutdb.core.uuid :refer [str->muuid]]
-;;             [mammutdb.core.error :as err]))
-
-;; (defn get-by-id
-;;   "Get document by id."
-;;   [^String collection ^String id]
-;;   (let [txfn (fn [con]
-;;                (m/mlet [id (str->muuid id)
-;;                         c  (scoll/get-by-name con collection)
-;;                         d  (sdoc/get-by-id con c id)]
-;;                  (m/return d)))]
-;;     (m/mlet [con (conn/new-connection)
-;;              res (stx/run-in-transaction con txfn)
-;;              _   (conn/close-connection con)]
-;;       (m/return res))))
-
-;; (defn persist
-;;   "Persist document."
-;;   [^String collection document options]
-;;   {:pre [(map? document)]}
-;;   (m/mlet [con (conn/new-connection)
-;;            c   (scoll/get-by-name con collection)
+;; (defn get-document-by-id
+;;   ([^String db ^String coll ^String id]
+;;      (get-document-by-id db coll id {}))
+;;   ([^String db ^String coll ^String id options]
+;;      (->> (fn [conn]
+;;             (m/mlet [dbname (check-database-name-safety dbname)
+;;                      name   (check-collection-name-safety name)
+;;                      id     (str->muuid id)
+;;                      db     (s/get-database-by-name dbname conn)
+;;                      coll   (s/get-collection-by-name db name conn)]
+;;               (s/get-document-by-id coll id conn)))
+;;           (s/transaction {:readonly true}))))

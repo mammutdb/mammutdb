@@ -25,7 +25,12 @@
 (ns mammutdb.storage.json
   "PostgreSQL compatible json object type."
   (:require [cheshire.core :as json]
-            [jdbc.types])
+            [cats.types :as t]
+            [cats.core :as m]
+            [jdbc.types]
+            [buddy.core.codecs :refer [ByteArray str->bytes]]
+            [mammutdb.core.errors :as e]
+            [mammutdb.logging :refer [log]])
   (:import org.postgresql.util.PGobject))
 
 (deftype JsonObject [v]
@@ -37,7 +42,11 @@
   (as-sql-type [self conn]
     (doto (PGobject.)
       (.setType "json")
-      (.setValue v))))
+      (.setValue v)))
+
+  ByteArray
+  (->byte-array [_]
+    (str->bytes v)))
 
 (alter-meta! #'->JsonObject assoc :no-doc true :private true)
 
@@ -50,12 +59,28 @@
         "json" (JsonObject. value)
         :else pgobj))))
 
+(defn parse
+  [data]
+  (try
+    (-> (json/parse-string data true)
+        (t/right))
+    (catch Exception exc
+      (log :debug "Wrong json received" exc)
+      (e/error :invalid-json-data))))
+
+(defn encode
+  [data]
+  (-> (json/generate-string data)
+      (t/right)))
+
 (defn from-native
   "PostgreSQL compatible json object constructor."
   [v]
-  (JsonObject. (json/generate-string v)))
+  (m/>>= (encode v)
+         (fn [v] (m/return (JsonObject. v)))))
 
 (defn to-native
   "Return native clojure data from json object."
   [v]
-  (json/parse-string (.v v)))
+  (parse (.v v)))
+

@@ -37,7 +37,6 @@
             [mammutdb.storage.connection :as sconn])
   (:import mammutdb.storage.database.Database))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -93,7 +92,16 @@
 
   sproto/DatabaseMember
   (get-database [coll]
-    (.-database coll)))
+    (.-database coll))
+
+  sproto/Serializable
+  (to-plain-object [collection]
+    {:id (.-name collection)
+     :name (.-name collection)
+     :createdAt (.-createdat collection)
+     :database (.-name (.-database collection))
+     :type :json}))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Database Extension
@@ -103,9 +111,10 @@
   [coll]
   (->> (sproto/get-mainstore-tablename coll)
        (format "CREATE TABLE %s (
-                 id uuid UNIQUE PRIMARY KEY,
+                 id varchar(2048) UNIQUE PRIMARY KEY,
                  data json,
-                 revision uuid,
+                 revid bigint,
+                 revhash varchar(255),
                  created_at timestamp with time zone
                 );")))
 
@@ -113,11 +122,12 @@
   [coll]
   (->> (sproto/get-revisions-tablename coll)
        (format "CREATE TABLE %s (
-                 id uuid DEFAULT uuid_generate_v1(),
+                 id varchar(2048),
                  data json,
-                 revision uuid DEFAULT uuid_generate_v1(),
+                 revid bigint,
+                 revhash varchar(255),
                  created_at timestamp with time zone,
-                 UNIQUE (id, revision)
+                 UNIQUE (id, revid, revhash)
                 );")))
 
 (defn- make-persist-collection-sql
@@ -180,6 +190,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: add optional metadata field that is now supported
+;; by storage but not by the storage api.
 
 (defn ->collection
   ([db name type]

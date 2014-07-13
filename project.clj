@@ -39,6 +39,10 @@
                  [prismatic/schema "0.2.4"]
                  [com.stuartsierra/component "0.2.1"]
 
+                 [com.taoensso/nippy "2.6.3"]
+                 ;; [io.netty/netty-buffer "4.0.21.Final"]
+                 ;; [clojurewerkz/buffy "1.0.0-beta4" :exclusions [io.netty/netty-buffer]]
+
                  ;; [org.apache.logging.log4j/log4j-core "2.0-rc1"]
                  ;; [org.apache.logging.log4j/log4j-api "2.0-rc1"]
 

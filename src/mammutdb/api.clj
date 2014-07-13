@@ -25,7 +25,8 @@
 (ns mammutdb.api
   (:require [potemkin.namespaces :refer [import-vars]]
             [mammutdb.api.database :as database]
-            [mammutdb.api.collection :as collection]))
+            [mammutdb.api.collection :as collection]
+            [mammutdb.api.documents :as documents]))
 
 (import-vars
  [collection
@@ -40,4 +41,8 @@
   get-all-databases
   get-database-by-name
   create-database
-  drop-database])
+  drop-database]
+
+ [documents
+
+  persist-document])

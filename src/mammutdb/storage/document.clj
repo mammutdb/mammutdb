@@ -25,145 +25,206 @@
 (ns mammutdb.storage.document
   (:require [cats.types :as t]
             [cats.core :as m]
-            [jdbc.core :as j]
+            [clojure.string :as str]
             [clj-time.core :as jt]
             [clj-time.coerce :as jc]
+            [jdbc.core :as j]
             [swiss.arrows :refer [-<>]]
+            [mammutdb.core.errors :as e]
+            [mammutdb.logging :refer [log]]
+            [mammutdb.core.uuid :refer [random-uuid]]
+            [mammutdb.core.revs :refer [make-new-revhash]]
             [mammutdb.storage.json :as json]
-            [mammutdb.storage.protocols :as sproto]
+            [mammutdb.storage.protocols :as sp]
             [mammutdb.storage.collection :as scoll]
             [mammutdb.storage.connection :as sconn])
   (:import mammutdb.storage.collection.JsonDocumentCollection))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Main Implementation
+;; Json Document Type
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO: implement Droppable protocol
-
-(deftype JsonDocument [collection id rev data createdat]
+(deftype JsonDocument [coll id revid revhash data createdat]
   java.lang.Object
   (toString [_]
     (with-out-str
-      (print [id rev data createdat])))
+      (print [id revid revhash data createdat])))
 
   (equals [_ other]
     (and (= id (.-id other))
-         (= rev (.-rev other))))
+         (= revid (.-revid other))
+         (= revhash (.-revhash other))))
 
-  sproto/Document
-  (document->record [doc]
-    {:id (.-id doc)
-     :revision (.-rev doc)
-     :data (.-data doc)})
+  sp/Document
+  (document->record [_]
+    {:id id
+     :revid revid
+     :revhash revhash
+     :data data})
 
-  (get-collection [doc]
-    (.-collection doc))
+  (get-collection [_] coll)
 
-  sproto/DatabaseMember
-  (get-database [doc]
-    (sproto/get-database (.-collection doc))))
+  sp/DatabaseMember
+  (get-database [_]
+    (sp/get-database coll))
 
-;; The following code is the concrete implementation
-;; of persistese for json based documents. At this momment
-;; it located on this file but in future it can be moved
-;; to own namespace, allowing so support multiple
-;; document types.
+  sp/Serializable
+  (to-plain-object [document]
+    (merge (.-data document)
+           {:_id (.-id document)
+            :_rev (format "%s-%s"
+                          (.-revid document)
+                          (.-revhash document))})))
 
-(defn- makesql-persist-document-on-mainstore
-  [coll doc]
-  (let [createdat (jc/to-sql-time (.-createdat doc))
-        data      (json/from-native (.-data doc))]
-    (-<> (sproto/get-mainstore-tablename coll)
-         (format "INSERT INTO %s (id, data, revision, created_at)
-                  VALUES (?, ?, ?, ?);" <>)
-         (vector <> (.-id doc) data (.-rev doc) createdat))))
 
-(defn- makesql-update-document-on-mainstore
-  [coll doc]
-  (let [createdat (jc/to-sql-time (.-createdat doc))
-        data      (json/from-native (.-data doc))]
-    (-<> (sproto/get-mainstore-tablename coll)
-         (format "UPDATE %s SET revision = ?, created_at = ?,
-                  data = ? WHERE id = ?;" <>)
-         (vector <> (.-rev doc) createdat data (.-id doc)))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Persistence Implementation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- persist-to-mainstore
-  [coll doc timestamp update? conn]
-  (let [createdat (jc/to-sql-time timestamp)
-        data      (json/from-native (.-data doc))
-        sql       (if update?
-                    (makesql-update-document-on-mainstore coll doc)
-                    (makesql-persist-document-on-mainstore coll doc))]
-    (m/>>= (sconn/execute-prepared! conn sql)
-           (fn [& args] (m/return doc)))))
+;; TODO: validate id (must be length of > 0).
+;; TODO: refactor this two functions in more small piceses of code.
 
-(defn- persist-to-revisions
-  [coll doc timestamp update? conn]
-  (let [createdat  (jc/to-sql-time timestamp)
-        data       (json/from-native (.-data doc))
-        tablename  (sproto/get-revisions-tablename coll)
-        sql-create (-<> tablename
-                        (format "INSERT INTO %s (data, created_at) VALUES (?,?);" <>)
-                        (vector <> data createdat))
-        sql-update (-<> tablename
-                        (format "INSERT INTO %s (id, data, created_at) VALUES (?,?,?);" <>)
-                        (vector <> (.-id doc) data createdat))
-        sql        (if update? sql-update sql-create)]
-    (m/mlet [res  (sconn/execute-prepared! conn sql {:returning [:id :revision]})
-             :let [res (first res)]]
-      (m/return (sproto/->document coll
-                                   (:id res)
-                                   (:revision res)
-                                   (.-data doc)
-                                   timestamp)))))
+(defn- create-json-document
+  [coll doc conn]
+  (let [ts      (jt/now)
+        id      (or (.-id doc) (random-uuid))
+        data    (.-data doc)
+        sqldata (-> (json/from-native data)
+                    (t/from-either))
+        sqlts   (jc/to-sql-time ts)
+        revid   1
+        revhash (make-new-revhash false 0 "" sqldata)
+        sqlfac  (fn [tablename]
+                  (-<> tablename
+                       (format "INSERT INTO %s (id, revid, revhash, data, created_at)
+                                VALUES (?, ?, ?, ?, ?);" <>)
+                       (vector <> id revid revhash sqldata sqlts)))]
+    (m/mlet [_ (sconn/execute-prepared! conn (sqlfac (sp/get-mainstore-tablename coll)))
+             _ (sconn/execute-prepared! conn (sqlfac (sp/get-revisions-tablename coll)))]
+      (m/return (JsonDocument. coll id revid revhash data ts)))))
+
+(defn- update-json-document
+  [coll prevdoc doc conn]
+  (let [ts      (jt/now)
+        id      (.-id doc)
+        data    (.-data doc)
+        sqldata (-> (json/from-native data)
+                    (t/from-either))
+        sqlts   (jc/to-sql-time ts)
+        revid   (inc (:revid prevdoc))
+        revhash (make-new-revhash false
+                                  (:revid prevdoc)
+                                  (:revhash prevdoc)
+                                  sqldata)
+        sql1    (-<> (sp/get-revisions-tablename coll)
+                     (format "INSERT INTO %s (id, revid, revhash, data, created_at)
+                              VALUES (?, ?, ?, ?, ?);" <>)
+                     (vector <> id revid revhash sqldata sqlts))
+        sql2    (-<> (sp/get-mainstore-tablename coll)
+                     (format "UPDATE %s SET data=?, revid=?, revhash=?, created_at=?
+                              WHERE id = ?;" <>)
+                     (vector <> sqldata revid revhash sqlts id))]
+    (m/mlet [_ (sconn/execute-prepared! conn sql1)
+             _ (sconn/execute-prepared! conn sql2)]
+      (m/return (JsonDocument. coll id revid revhash data ts)))))
+
+(defn persist-json-document
+  [coll doc conn]
+  (let [prevdoc (-<> (sp/get-mainstore-tablename coll)
+                     (format "SELECT * FROM %s WHERE id = ?;" <>)
+                     (vector <> (.-id doc))
+                     (j/query-first conn <>))]
+    (if (nil? prevdoc)
+      (create-json-document coll doc conn)
+      (update-json-document coll prevdoc doc conn))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Json Document parsing (from string)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- parse-rev
+  [rev]
+  (if (nil? rev)
+    (t/right rev)
+    (try
+      (let [[revid revhash] (str/split rev #"-" 2)
+            revid           (Long/parseLong revid)]
+        (t/right [revid revhash]))
+      (catch Exception exc
+        (log :debug "Invalid rev format passed" exc)
+        (e/error :invalid-rev-format)))))
+
+(defn json->document
+  "Json document specific coersion function
+  from plain json (string) to document instance."
+  ([coll data]
+     (json->document coll {} data))
+  ([coll opts data]
+     (m/mlet [data (json/parse data)
+              :let [id   (or (:_id opts) (:_id data))
+                    rev  (or (:_rev opts) (:_rev data))
+                    data (dissoc data :_id :_rev)]
+              rev  (parse-rev rev)]
+       (-> (if-let [[revid revhash] rev]
+             (JsonDocument. coll id revid revhash data nil)
+             (JsonDocument. coll id nil nil data nil))
+           (m/return)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Json Collection Type extension.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (extend-type JsonDocumentCollection
-  sproto/DocumentStore
-  (persist-document [coll doc conn]
-    (let [timestamp (jt/now)
-          forupdate (not (nil? (.-id doc)))]
-      (m/>>= (t/just doc)
-             #(persist-to-revisions coll % timestamp forupdate conn)
-             #(persist-to-mainstore coll % timestamp forupdate conn))))
+  sp/DocumentStore
 
-  (record->document [coll rec]
-    (let [{:keys [id revision data created_at]} rec]
-      (->> (jc/from-sql-time created_at)
-           (JsonDocument. coll id revision data))))
+  ;; Concerts database (postgresql) record response
+  ;; into a valid document instance.
+  (record->document [coll {:keys [id revid revhash data created_at]}]
+    (let [data (json/to-native data)
+          ts   (jc/from-sql-time created_at)]
+      (JsonDocument. coll id revid revhash data ts)))
 
-  (->document [coll id rev data createdat]
-    (JsonDocument. coll id rev data createdat))
+  (persist-document [coll opts data conn]
+    (m/mlet [doc (json->document coll opts data)]
+      (persist-json-document coll doc conn))))
 
-  sproto/DocumentQueryable
-  (get-document-by-id [coll id conn]
-    (m/mlet [rec (-<> (sproto/get-mainstore-tablename coll)
-                      (format "SELECT * FROM %s WHERE id = ?;" <>)
-                      (vector <> id)
-                      (sconn/query-first conn <>))]
-      (m/return (sproto/record->document coll rec))))
+  ;; sp/DocumentQueryable
+  ;; (get-document-by-id [coll id conn]
+  ;;   (m/mlet [rec (-<> (sp/get-mainstore-tablename coll)
+  ;;                     (format "SELECT * FROM %s WHERE id = ?;" <>)
+  ;;                     (vector <> id)
+  ;;                     (sconn/query-first conn <>))]
+  ;;     (m/return (sp/record->document coll rec))))
 
-  (get-document-by-rev [coll id rev conn]
-    (m/mlet [rec (-<> (sproto/get-mainstore-tablename coll)
-                      (format "SELECT * FROM %s WHERE id = ? AND revision = ?;" <>)
-                      (vector <> id rev)
-                      (sconn/query-first conn <>))]
-      (m/return (sproto/record->document coll rec)))))
-
-
+  ;; (get-document-by-rev [coll id rev conn]
+  ;;   (m/mlet [rec (-<> (sp/get-mainstore-tablename coll)
+  ;;                     (format "SELECT * FROM %s WHERE id = ? AND revision = ?;" <>)
+  ;;                     (vector <> id rev)
+  ;;                     (sconn/query-first conn <>))]
+  ;;     (m/return (sp/record->document coll rec)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn ->document
-  [& args]
-  (apply sproto/->document args))
+(defn document?
+  "Check if object v satisfies
+  the main document protocol."
+  [v]
+  (satisfies? sp/Document v))
 
 (defn persist-document
-  [& args]
-  (apply sproto/persist-document args))
+  "Generic function for persist document
+  in the collection."
+  ([coll data conn]
+     (persist-document coll {} data conn))
+  ([coll opts data conn]
+     (sp/persist-document coll opts data conn)))
 
-(defn get-document-by-id
-  [& args]
-  (apply sproto/get-document-by-id args))
+;; (defn get-document-by-id
+;;   [coll id conn]
+;;   (sp/get-document-by-id coll id conn))
+
+;; (defn get-document-by-rev
+;;   [coll id rev conn]
+;;   (sp/get-document-by-id coll id rev conn))

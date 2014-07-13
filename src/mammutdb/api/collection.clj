@@ -28,44 +28,40 @@
             [mammutdb.core.errors :as e]
             [mammutdb.core.safe :refer [check-collection-name-safety
                                         check-database-name-safety]]
-            [mammutdb.storage :as storage]
-            [mammutdb.storage.connection :as sconn]
-            [mammutdb.storage.transaction :as stx]
-            [mammutdb.storage.database :as sdb]
-            [mammutdb.storage.collection :as scoll]))
+            [mammutdb.storage :as s]))
 
 (defn get-all-collections
   [^String dbname]
   (->> (fn [conn]
          (m/mlet [dbname (check-database-name-safety dbname)
-                  db     (storage/get-database-by-name dbname conn)]
-           (storage/get-all-collections db conn)))
-       (stx/transaction {:readonly true})))
+                  db     (s/get-database-by-name dbname conn)]
+           (s/get-all-collections db conn)))
+       (s/transaction {:readonly true})))
 
 (defn get-collection-by-name
   [^String dbname ^String name]
   (->> (fn [conn]
          (m/mlet [dbname (check-database-name-safety dbname)
                   name   (check-collection-name-safety name)
-                  db     (storage/get-database-by-name dbname conn)]
-           (storage/get-collection-by-name db name conn)))
-       (stx/transaction {:readonly true})))
+                  db     (s/get-database-by-name dbname conn)]
+           (s/get-collection-by-name db name conn)))
+       (s/transaction {:readonly true})))
 
 (defn create-collection
   [^String dbname ^String name]
   (->> (fn [conn]
          (m/mlet [dbname (check-database-name-safety dbname)
                   name   (check-collection-name-safety name)
-                  db     (storage/get-database-by-name dbname conn)]
-           (storage/create-collection db name :json conn)))
-       (stx/transaction {:readonly false})))
+                  db     (s/get-database-by-name dbname conn)]
+           (s/create-collection db name :json conn)))
+       (s/transaction {:readonly false})))
 
 (defn drop-collection
   [^String dbname ^String name]
   (->> (fn [conn]
          (m/mlet [dbname (check-database-name-safety dbname)
                   name   (check-collection-name-safety name)
-                  db     (storage/get-database-by-name dbname conn)
-                  coll   (storage/get-collection-by-name db name conn)]
-           (storage/drop-collection coll conn)))
-       (stx/transaction {:readonly false})))
+                  db     (s/get-database-by-name dbname conn)
+                  coll   (s/get-collection-by-name db name conn)]
+           (s/drop-collection coll conn)))
+       (s/transaction {:readonly false})))

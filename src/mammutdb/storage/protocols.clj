@@ -53,13 +53,17 @@
   (get-collection [doc] "Get associated collection"))
 
 (defprotocol DocumentStore
+  ;; (->document [_ id rev data createdat] "Build document from data.")
+
   (record->document [_ rec] "Buld document from record")
-  (->document [_ id rev data createdat] "Build document from data.")
-  (persist-document [_ doc conn] "Persist document"))
+  (persist-document [_ doc opts conn] "Persist document"))
 
 (defprotocol DocumentQueryable
   (get-document-by-rev [_ id rev conn] "Search document by id and rev")
   (get-document-by-id [_ id conn] "Get document by id"))
+
+(defprotocol Serializable
+  (to-plain-object [_] "Convert object to plain clojure object"))
 
 ;; (defprotocol DocumentRichQueryable
 ;;   (filter-by-key [

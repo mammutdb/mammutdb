@@ -22,22 +22,25 @@
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(ns mammutdb.transports.http.conversions
-  (:require [mammutdb.transports.http.protocols :as proto]
-            [mammutdb.storage.database :as sdb])
-  (:import mammutdb.storage.database.Database))
+(ns mammutdb.core.revs
+  (:require [cats.types :as t]
+            [taoensso.nippy :as nippy]
+            [buddy.core.codecs :refer [->byte-array bytes->hex]]
+            [buddy.core.hash :as hash]
+            [mammutdb.core.errors :as e]))
 
-(extend-protocol proto/Serializable
-  mammutdb.storage.database.Database
-  (to-plain-object [db]
-    {:name (.-name db)
-     :id (.-name db)
-     :createdAt (.-createdat db)})
+;; TODO: This is a quick and dirty implementation. It needs a refactor.
+;; Considerations:
+;; - Use platform agnostic binary serialization or platform specific?
+;; - revhash should be ireversible or reversible?
+;; - that hash algorithm should be used? sha3? sha2? md5/sha1? other?
 
-  mammutdb.storage.collection.JsonDocumentCollection
-  (to-plain-object [collection]
-    {:id (.-name collection)
-     :name (.-name collection)
-     :createdAt (.-createdat collection)
-     :database (.-name (.-database collection))
-     :type :json}))
+(defn make-new-revhash
+  "Create new revision."
+  [^Boolean deleted ^Long oldrevid ^String oldrevhash body]
+  (let [data (nippy/freeze {:deleted deleted
+                            :revid oldrevid
+                            :revhash (->byte-array oldrevhash)
+                            :body (->byte-array body)})]
+    (-> (hash/sha3-256 data)
+        (bytes->hex))))
