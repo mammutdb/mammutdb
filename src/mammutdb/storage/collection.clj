@@ -109,7 +109,7 @@
 ;; Database Extension
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- make-mainstore-sql
+(defn- makesql-mainstore-createtable
   [coll]
   (->> (sp/get-mainstore-tablename coll)
        (format "CREATE TABLE %s (
@@ -120,7 +120,7 @@
                  created_at timestamp with time zone
                 );")))
 
-(defn- make-revisions-sql
+(defn- makesql-revisions-createtable
   [coll]
   (->> (sp/get-revisions-tablename coll)
        (format "CREATE TABLE %s (
@@ -132,7 +132,7 @@
                  UNIQUE (id, revid, revhash)
                 );")))
 
-(defn- make-persist-collection-sql
+(defn- makesql-register-collection
   [db coll type]
   ["INSERT INTO mammutdb_collections (type, name, database)
     VALUES (?, ?, ?);"
@@ -145,9 +145,9 @@
   ;; TODO: make collection instance with retrieved data
   ;; after collection creation in postgresql
   (let [coll (->collection db name :json)
-        sql1 (make-mainstore-sql coll)
-        sql2 (make-revisions-sql coll)
-        sql3 (make-persist-collection-sql db coll :json)]
+        sql1 (makesql-mainstore-createtable coll)
+        sql2 (makesql-revisions-createtable coll)
+        sql3 (makesql-register-collection db coll :json)]
     (serr/catch-sqlexception
      (j/execute! con sql1)
      (j/execute! con sql2)
