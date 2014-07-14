@@ -127,3 +127,57 @@
 
      (either/left? result)
      (left-as-response result))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Documents Api
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; (defn document-list
+;;   [{:keys [params] :as req}]
+;;   (let [dbname (:dbname params)
+;;         result (api/get-documents dbname)]
+;;     (cond
+;;      (either/right? result)
+;;      (ok (mapv s/to-plain-object (either/from-either result)))
+
+;;      (either/left? result)
+;;      (left-as-response result))))
+
+;; (defn document-detail
+;;   [{:keys [params] :as req}]
+;;   (let [dbname   (:dbname params)
+;;         collname (:collname params)
+;;         docid    (:docid params)
+;;         result   (api/get-document-by-id dbname collname docid)]
+;;     (cond
+;;      (either/right? result)
+;;      (ok (s/to-plain-object (either/from-either result)))
+
+;;      (either/left? result)
+;;      (left-as-response result))))
+
+(defn document-create
+  [{:keys [params] :as req}]
+  (let [dbname   (:dbname params)
+        collname (:collname params)
+        body     (slurp (:body req))
+        result   (api/persist-document dbname collname body)]
+    (cond
+     (either/right? result)
+     (created (s/to-plain-object (either/from-either result)))
+
+     (either/left? result)
+     (left-as-response result))))
+
+;; (defn document-drop
+;;   [{:keys [params] :as req}]
+;;   (let [dbname   (:dbname params)
+;;         collname (:collname params)
+;;         result (api/drop-collection dbname collname)]
+;;     (cond
+;;      (either/right? result)
+;;      (no-content)
+;;
+;;      (either/left? result)
+;;      (left-as-response result))))
+

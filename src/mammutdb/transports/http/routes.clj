@@ -36,4 +36,6 @@
 
   (GET "/databases/:dbname" [] ctrl/collection-list)
   (PUT "/databases/:dbname/:collname" [] ctrl/collection-create)
-  (DELETE "/databases/:dbname/:collname" [] ctrl/collection-drop))
+  (DELETE "/databases/:dbname/:collname" [] ctrl/collection-drop)
+
+  (POST "/databases/:dbname/:collname" [] ctrl/document-create))
