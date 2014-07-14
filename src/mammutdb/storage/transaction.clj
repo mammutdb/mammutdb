@@ -34,7 +34,9 @@
 (defn run-in-transaction
   [conn func & [{:keys [retries readonly] :or {retries 3 readonly false}}]]
   (loop [current-try 1]
-    (log :debug (format "Running a transaction, try %s of %s" current-try retries))
+    (log :debug (format "Running a transaction, try %s of %s"
+                        current-try
+                        (inc retries)))
     (let [tx-opts {:isolation-level :serializable
                    :read-only       readonly}
           tx-res (trans/with-transaction conn tx-opts
