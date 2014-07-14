@@ -12,7 +12,6 @@
 (deftest run-in-transaction
   ;; Setup
   (config/setup-config! "test/testconfig.edn")
-  (migrations/bootstrap)
 
   (testing "It runs the function once if all goes well"
     (with-open [conn (j/make-connection @sconn/datasource)]
