@@ -99,6 +99,7 @@
             doc2  (either/from-either mdoc2)]
         (is (either/right? mdoc2))
         (is (= (.-data doc2) (.-data doc1)))))
+
     (api/drop-collection "foodb" "collname1")
     (api/drop-database "foodb"))
 

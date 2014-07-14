@@ -111,5 +111,18 @@
       (is (= (:status res) 201))
       (is (= (get-in res [:body :foo] "bar")))))
 
+  (testing "Get basic detail by id"
+    (let [docdata (-> (json/encode {:foo "bar", :_id "foo"})
+                      (either/from-either))]
+      (api/persist-document "sampledb" "samplecoll" docdata))
+
+    (let [req {:params {:dbname "sampledb"
+                        :collname "samplecoll"
+                        :docid "foo"}}
+          res (ctrls/document-detail req)]
+      (is (= (:status res) 200))
+      (is (= (get-in res [:body :foo] "bar")))
+      (is (= (get-in res [:body :_id] "foo")))))
+
   (api/drop-collection "sampledb" "samplecoll")
   (api/drop-database "sampledb"))

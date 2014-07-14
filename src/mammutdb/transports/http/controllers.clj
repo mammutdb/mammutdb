@@ -143,18 +143,18 @@
 ;;      (either/left? result)
 ;;      (left-as-response result))))
 
-;; (defn document-detail
-;;   [{:keys [params] :as req}]
-;;   (let [dbname   (:dbname params)
-;;         collname (:collname params)
-;;         docid    (:docid params)
-;;         result   (api/get-document-by-id dbname collname docid)]
-;;     (cond
-;;      (either/right? result)
-;;      (ok (s/to-plain-object (either/from-either result)))
+(defn document-detail
+  [{:keys [params] :as req}]
+  (let [dbname   (:dbname params)
+        collname (:collname params)
+        docid    (:docid params)
+        result   (api/get-document-by-id dbname collname docid)]
+    (cond
+     (either/right? result)
+     (ok (s/to-plain-object (either/from-either result)))
 
-;;      (either/left? result)
-;;      (left-as-response result))))
+     (either/left? result)
+     (left-as-response result))))
 
 (defn document-create
   [{:keys [params] :as req}]

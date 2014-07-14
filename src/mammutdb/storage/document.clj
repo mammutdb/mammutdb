@@ -229,6 +229,6 @@
   [coll id conn]
   (sp/get-document-by-id coll id conn))
 
-(defn get-document-by-rev
-  [coll id rev conn]
-  (sp/get-document-by-rev coll id rev conn))
+;; (defn get-document-by-rev
+;;   [coll id rev conn]
+;;   (sp/get-document-by-rev coll id rev conn))

@@ -38,4 +38,5 @@
   (PUT "/databases/:dbname/:collname" [] ctrl/collection-create)
   (DELETE "/databases/:dbname/:collname" [] ctrl/collection-drop)
 
-  (POST "/databases/:dbname/:collname" [] ctrl/document-create))
+  (POST "/databases/:dbname/:collname" [] ctrl/document-create)
+  (GET "/databases/:dbname/:collname/:docid" [] ctrl/document-detail))
