@@ -61,13 +61,8 @@
   (let [mresult (api/get-all-databases)
         result  (either/from-either mresult)]
     (cond
-<<<<<<< HEAD
      (either/right? mresult)
-     (ok (mapv to-plain-object result))
-=======
-     (t/right? mresult)
      (ok (mapv s/to-plain-object result))
->>>>>>> Fix http controllers.
 
      (either/left? mresult)
      (left-as-response mresult))))
