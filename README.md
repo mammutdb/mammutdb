@@ -68,15 +68,6 @@ see the changelog or below development phases state.
 - Haskell driver/bindings.
 - Golang driver/bindings.
 
-## Instalation notes
-You should configure your database connection with the file: testconfig.edn
-
-Current implementation requires "UUID OSSP" extension. Should be enabled with:
-
-```sql
-CREATE EXTENSION "uuid-ossp";
-```
-
 ## Run standalone process
 
 ```bash
