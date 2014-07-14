@@ -43,7 +43,6 @@
   (start [component]
     (log :info "Starting transport: http")
     (let [app    (-> main-routes
-                     (wrap-json-body {:keywords? true :bigdecimals? true})
                      (wrap-json-response {:pretty true})
                      (wrap-exceptions-handler)
                      (wrap-request-logging)

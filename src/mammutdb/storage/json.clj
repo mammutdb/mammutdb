@@ -65,8 +65,11 @@
     (-> (json/parse-string data true)
         (either/right))
     (catch Exception exc
-      (log :debug "Wrong json received" exc)
-      (e/error :invalid-json-data))))
+      ;; (log :debug "Wrong json received" exc)
+      (e/error :invalid-json-format))))
+
+;; Alias
+(def decode parse)
 
 (defn encode
   [data]

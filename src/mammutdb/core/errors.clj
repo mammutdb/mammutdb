@@ -67,6 +67,10 @@
    {:msg "Unexpected error"
     :http-code :500}
 
+   :invalid-json-format
+   {:msg "Invalid json format."
+    :http-code :400}
+
    :collection-name-unsafe
    {:msg "Collection name is unsafe"
     :http-code :400}
