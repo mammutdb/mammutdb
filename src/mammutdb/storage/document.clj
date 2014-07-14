@@ -180,28 +180,32 @@
   ;; Concerts database (postgresql) record response
   ;; into a valid document instance.
   (record->document [coll {:keys [id revid revhash data created_at]}]
-    (let [data (json/to-native data)
-          ts   (jc/from-sql-time created_at)]
-      (JsonDocument. coll id revid revhash data ts)))
+    (m/mlet [data (json/to-native data)
+             :let [ts (jc/from-sql-time created_at)]]
+      (m/return (JsonDocument. coll id revid revhash data ts))))
 
   (persist-document [coll opts data conn]
     (m/mlet [doc (json->document coll opts data)]
-      (persist-json-document coll doc conn))))
+      (persist-json-document coll doc conn)))
 
-  ;; sp/DocumentQueryable
-  ;; (get-document-by-id [coll id conn]
-  ;;   (m/mlet [rec (-<> (sp/get-mainstore-tablename coll)
-  ;;                     (format "SELECT * FROM %s WHERE id = ?;" <>)
-  ;;                     (vector <> id)
-  ;;                     (sconn/query-first conn <>))]
-  ;;     (m/return (sp/record->document coll rec))))
+  sp/DocumentQueryable
 
-  ;; (get-document-by-rev [coll id rev conn]
-  ;;   (m/mlet [rec (-<> (sp/get-mainstore-tablename coll)
-  ;;                     (format "SELECT * FROM %s WHERE id = ? AND revision = ?;" <>)
-  ;;                     (vector <> id rev)
-  ;;                     (sconn/query-first conn <>))]
-  ;;     (m/return (sp/record->document coll rec)))))
+  (get-document-by-id [coll id conn]
+    (m/mlet [rec (-<> (sp/get-mainstore-tablename coll)
+                      (format "SELECT * FROM %s WHERE id = ?;" <>)
+                      (vector <> id)
+                      (sconn/query-first conn <>))]
+      (sp/record->document coll rec)))
+
+  (get-document-by-rev [coll id rev conn]
+    (m/mlet [rev  (parse-rev rev)
+             :let [[revid revhash] rev]
+             rec  (-<> (sp/get-mainstore-tablename coll)
+                       (format "SELECT * FROM %s WHERE id = ? AND
+                                revid = ? AND revhash = ?;" <>)
+                       (vector <> id revid revhash)
+                       (sconn/query-first conn <>))]
+      (m/return (sp/record->document coll rec)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public Api
@@ -221,10 +225,10 @@
   ([coll opts data conn]
      (sp/persist-document coll opts data conn)))
 
-;; (defn get-document-by-id
-;;   [coll id conn]
-;;   (sp/get-document-by-id coll id conn))
+(defn get-document-by-id
+  [coll id conn]
+  (sp/get-document-by-id coll id conn))
 
-;; (defn get-document-by-rev
-;;   [coll id rev conn]
-;;   (sp/get-document-by-id coll id rev conn))
+(defn get-document-by-rev
+  [coll id rev conn]
+  (sp/get-document-by-rev coll id rev conn))

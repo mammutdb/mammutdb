@@ -41,9 +41,9 @@
 
   document?
   json->document
-  persist-document]
-  ;; get-document-by-id
-  ;; get-document-by-rev]
+  persist-document
+  get-document-by-id
+  get-document-by-rev]
 
  [collection
 

@@ -45,4 +45,5 @@
 
  [documents
 
-  persist-document])
+  persist-document
+  get-document-by-id])

@@ -88,6 +88,20 @@
   (config/setup-config! "test/testconfig.edn")
   (migrations/bootstrap)
 
+  (testing "Get by id"
+    (let [mdb     (api/create-database "foodb")
+          mcoll   (api/create-collection "foodb" "collname1")
+          docdata (-> (json/encode {:name "foo"})
+                      (either/from-either))
+          mdoc1   (api/persist-document "foodb" "collname1" docdata)
+          doc1    (either/from-either mdoc1)]
+      (let [mdoc2 (api/get-document-by-id "foodb", "collname1", (.-id doc1))
+            doc2  (either/from-either mdoc2)]
+        (is (either/right? mdoc2))
+        (is (= (.-data doc2) (.-data doc1)))))
+    (api/drop-collection "foodb" "collname1")
+    (api/drop-database "foodb"))
+
   (testing "Common crud functions"
     (let [mdb     (api/create-database "foodb")
           mcoll   (api/create-collection "foodb" "collname1")
@@ -118,4 +132,20 @@
             (is (= (.-data doc) {:name "bar"}))))
 
     (api/drop-collection "foodb" "collname1")
-    (api/drop-database "foodb")))
+    (api/drop-database "foodb"))
+
+  (let [mdb     (api/create-database "foodb")
+        mcoll   (api/create-collection "foodb" "collname1")]
+
+      ;; Empty document
+    (testing "Persist wrong data with empty document"
+      (let [mdoc (api/persist-document "foodb" "collname1" "")
+            doc  (either/from-either mdoc)]
+        (is (either/left? mdoc))
+        (is (= (:error-code doc) :invalid-json-format))))
+
+    (api/drop-collection "foodb" "collname1")
+    (api/drop-database "foodb"))
+
+)
+
