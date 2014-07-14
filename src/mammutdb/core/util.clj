@@ -30,4 +30,5 @@
   "Generic utils namespace.")
 
 (defn exit [status]
+  (Thread/sleep 1000)
   (System/exit status))
