@@ -1,7 +1,9 @@
 (ns user
   (:require [com.stuartsierra.component :as component]
             [clojure.tools.namespace.repl :refer (refresh)]
-            [mammutdb.cli :as cli]))
+            [mammutdb.cli :as cli]
+            [clojure.test :refer [run-tests]])
+  (:refer-clojure :exclude [test]))
 
 (def system nil)
 
@@ -23,3 +25,11 @@
 (defn reset []
   (stop)
   (refresh :after 'user/go))
+
+(defn test
+  []
+  (run-tests 'mammutdb.test-api
+             'mammutdb.test-auth
+             'mammutdb.test-config
+             'mammutdb.test-query
+             'mammutdb.test-storage))
