@@ -65,5 +65,6 @@
   ;; :main ^:skip-aot mammutdb.cli
   :profiles {:uberjar {:main ^:skip-aot mammutdb.cli}}
   :target-path "target/%s"
-  :injections [(require '[cats.types :as t])
+  :injections [(require '[cats.monad.maybe :as maybe])
+               (require '[cats.monad.either :as either])
                (require '[cats.core :as m])])

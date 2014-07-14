@@ -26,7 +26,7 @@
   (:require [jdbc.core :as j]
             [jdbc.pool.dbcp :as pool]
             [cats.core :as m]
-            [cats.types :as t]
+            [cats.monad.either :as either]
             [mammutdb.config :as config]
             [mammutdb.storage.errors :as serr]))
 
@@ -47,14 +47,14 @@
   "Monadic function for create new connection."
   []
   (serr/catch-sqlexception
-   (t/right (j/make-connection @datasource))))
+   (either/right (j/make-connection @datasource))))
 
 (defn close-connection
   "Monadic close connection function."
   [con]
   (serr/catch-sqlexception
    (.close con)
-   (t/right true)))
+   (either/right true)))
 
 (defn query
   [con sql]

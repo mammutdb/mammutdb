@@ -28,7 +28,7 @@
             [mammutdb.core.errors :refer [error]]
             [mammutdb.config :as config]
             [mammutdb.core.edn :as edn]
-            [cats.types :as t]
+            [cats.monad.either :as either]
             [cats.core :as m]))
 
 (def ^{:dynamic true
@@ -62,7 +62,7 @@
   if any exception is raised."
   [expression]
   `(try
-     (t/right ~expression)
+     (either/right ~expression)
      (catch java.sql.BatchUpdateException e#
        (let [e# (.getNextException e#)]
          (resolve-pgsql-error e#)))

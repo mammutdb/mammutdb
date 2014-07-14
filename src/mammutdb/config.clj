@@ -31,8 +31,7 @@
             [mammutdb.core.util :refer [exit]]
             [mammutdb.logging :refer [log]]
             [schema.core :as s]
-            [cats.core :as m]
-            [cats.types :as t]))
+            [cats.core :as m]))
 
 ;; Dynamic var for configuration file path.
 ;; It just serves for testing purposes only.

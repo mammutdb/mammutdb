@@ -31,7 +31,6 @@
             [mammutdb.config :refer [configuration]]
             [com.stuartsierra.component :as component]
             [cats.core :as m]
-            [cats.types :as t]
             [clojure.string :as str]
             [clojure.java.io :as io]
             [clojure.tools.cli :refer [parse-opts]])

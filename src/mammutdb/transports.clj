@@ -27,7 +27,6 @@
   (:require [clojure.string :as str]
             [com.stuartsierra.component :as component]
             [cats.core :as m]
-            [cats.types :as t]
             [mammutdb.logging :refer [log]]
             [mammutdb.core.util :refer [exit]]))
 

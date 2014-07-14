@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [clojure.java.io :as io]
             [mammutdb.config :as config]
-            [cats.core :as m]
-            [cats.types :as t]))
+            [cats.core :as m]))
 
 (deftest config
   (config/setup-config! "test/testconfig.edn")

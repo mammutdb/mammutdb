@@ -24,7 +24,7 @@
 
 (ns mammutdb.core.errors
   "Generic mammutdb error codes definition."
-  (:require [cats.types :as t]))
+  (:require [cats.monad.either :as either]))
 
 ;; TODO: remove http code from errors. Is responsibility
 ;; of transport protocol define them for each error type.
@@ -78,10 +78,10 @@
 (defn error
   [code & [msg ctx]]
   (if-let [errdata (code *mammutdb-error-codes*)]
-    (t/left {:error-code code
-             :error-ctx ctx
-             :http-code (:http-code errdata)
-             :error-msg (or msg (:msg errdata))})
-    (t/left {:error-code :unexpected
-             :error-ctx ctx
-             :error-msg (format "Error code '%s' not defined" code)})))
+    (either/left {:error-code code
+                  :error-ctx ctx
+                  :http-code (:http-code errdata)
+                  :error-msg (or msg (:msg errdata))})
+    (either/left {:error-code :unexpected
+                  :error-ctx ctx
+                  :error-msg (format "Error code '%s' not defined" code)})))

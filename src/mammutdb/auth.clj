@@ -25,7 +25,8 @@
 (ns mammutdb.auth
   "Authentication functions for mammutdb."
   (:require [cats.core :as m]
-            [cats.types :as t]
+            [cats.monad.maybe :as maybe]
+            [cats.monad.either :as either]
             [buddy.hashers.bcrypt :as hasher]
             [buddy.sign.jws :as jws]
             [mammutdb.config :as config]
@@ -46,13 +47,13 @@
   [user password]
   (let [hash (.-password user)]
     (if-let [ok (hasher/check-password password hash)]
-      (t/right true)
+      (either/right true)
       (e/error :wrong-authentication))))
 
 (defn- make-access-token
   "Given a userid, return valid access token."
   [^long userid]
-  (t/just (jws/sign {:userid userid} @secret-key)))
+  (maybe/just (jws/sign {:userid userid} @secret-key)))
 
 (defn- validate-access-token
   "Given a token, validates it and return user id."
@@ -60,7 +61,7 @@
   (let [data   (jws/unsign token @secret-key)
         userid (:userid data)]
     (if userid
-      (t/right userid)
+      (either/right userid)
       (e/error :wrong-authentication))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

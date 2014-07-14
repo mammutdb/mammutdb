@@ -25,7 +25,8 @@
 (ns mammutdb.storage.user
   (:require [clojure.java.io :as io]
             [cats.core :as m]
-            [cats.types :as t]
+            [cats.monad.maybe :as maybe]
+            [cats.monad.either :as either]
             [jdbc.core :as j]
             [buddy.hashers.bcrypt :as hasher]
             [mammutdb.core.errors :as e]
@@ -51,7 +52,7 @@
                          WHERE id = ?;" id]]]
       (serr/catch-sqlexception
        (j/execute-prepared! conn sql)
-       (t/right)))))
+       (either/right)))))
 
 (alter-meta! #'->User assoc :no-doc true :private true)
 
@@ -87,7 +88,7 @@
                         username]]
            result (sconn/query-first conn sql)]
     (if result
-      (t/right (record->user result))
+      (either/right (record->user result))
       (e/error :user-does-not-exist
                (format "User '%s' not exist" username)))))
 
@@ -97,7 +98,7 @@
                          FROM mammutdb_user WHERE id = ?;" id]]
            result (sconn/query-first conn sql)]
     (if result
-      (t/right (record->user result))
+      (either/right (record->user result))
       (e/error :user-does-not-exist
                (format "User with id '%s' not exist" id)))))
 
@@ -120,9 +121,8 @@
                   password]]
     (serr/catch-sqlexception
      (let [res (j/execute-prepared! conn sql {:returning :all})]
-       (t/right (record->user (first res)))))))
+       (either/right (record->user (first res)))))))
 
 (defn drop-user
   [user conn]
   (sproto/drop user conn))
-

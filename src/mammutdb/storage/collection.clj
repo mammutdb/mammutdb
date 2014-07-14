@@ -23,7 +23,7 @@
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (ns mammutdb.storage.collection
-  (:require [cats.types :as t]
+  (:require [cats.monad.either :as either]
             [cats.core :as m]
             [jdbc.core :as j]
             [clojure.string :as str]
@@ -90,7 +90,7 @@
        (j/execute! con sql3)
        (j/execute! con sql2)
        (j/execute-prepared! con sql1)
-       (t/right))))
+       (either/right))))
 
   sp/DatabaseMember
   (get-database [coll]
@@ -152,7 +152,7 @@
      (j/execute! con sql1)
      (j/execute! con sql2)
      (j/execute-prepared! con sql3)
-     (t/right coll))))
+     (either/right coll))))
 
 (extend-type Database
   sp/CollectionStore
