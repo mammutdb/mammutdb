@@ -34,7 +34,8 @@
 (def ^{:dynamic true
        :doc "PostgreSQL -> MammutDB error code translation map."}
   *pgsql-error-codes*
-  {:42P07  :collection-exists})
+  {:42P07  :collection-exists
+   :40001  :serialization-failure})
 
 (defn resolve-pgsql-error
   [e]

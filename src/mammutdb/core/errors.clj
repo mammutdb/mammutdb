@@ -68,12 +68,16 @@
     :http-code :500}
 
    :collection-name-unsafe
-   {:msg "Collection name is unsafe."
+   {:msg "Collection name is unsafe"
     :http-code :400}
 
    :invalid-rev-format
-   {:msg "rev field has invalid format."
-    :http-code :400}})
+   {:msg "rev field has invalid format"
+    :http-code :400}
+
+   :serialization-failure
+   {:msg "Transaction serialization failed"
+    :http-code 500}})
 
 (defn error
   [code & [msg ctx]]
