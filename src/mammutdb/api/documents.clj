@@ -23,8 +23,7 @@
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (ns mammutdb.api.documents
-  (:require [cats.types :as t]
-            [cats.core :as m]
+  (:require [cats.core :as m]
             [mammutdb.core.errors :as e]
             [mammutdb.core.safe :refer [check-collection-name-safety
                                         check-database-name-safety]]

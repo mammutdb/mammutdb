@@ -24,7 +24,8 @@
 
 (ns mammutdb.transports.http.controllers
   (:require [cats.core :as m]
-            [cats.types :as t]
+            [cats.monad.maybe :as maybe]
+            [cats.monad.either :as either]
             [mammutdb.api :as api]
             [mammutdb.transports.http.conversions :as conv]
             [mammutdb.transports.http.protocols :refer [to-plain-object]]
@@ -43,7 +44,7 @@
 
 (defn left-as-response
   [result]
-  (let [value (t/from-either result)
+  (let [value (either/from-either result)
         response {:code (:error-code value)
                   :msg (:error-msg value)
                   :ctx (:error-ctx value)}]
@@ -59,12 +60,12 @@
 (defn databases-list
   [req]
   (let [mresult (api/get-all-databases)
-        result  (t/from-either mresult)]
+        result  (either/from-either mresult)]
     (cond
-     (t/right? mresult)
+     (either/right? mresult)
      (ok (mapv to-plain-object result))
 
-     (t/left? mresult)
+     (either/left? mresult)
      (left-as-response mresult))))
 
 (defn databases-create
@@ -72,10 +73,10 @@
   (let [dbname (:dbname params)
         result (api/create-database dbname)]
     (cond
-     (t/right? result)
-     (created (to-plain-object (t/from-either result)))
+     (either/right? result)
+     (created (to-plain-object (either/from-either result)))
 
-     (t/left? result)
+     (either/left? result)
      (left-as-response result))))
 
 (defn databases-drop
@@ -83,10 +84,10 @@
   (let [dbname (:dbname params)
         result (api/drop-database dbname)]
     (cond
-     (t/right? result)
+     (either/right? result)
      (no-content)
 
-     (t/left? result)
+     (either/left? result)
      (left-as-response result))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -98,10 +99,10 @@
   (let [dbname (:dbname params)
         result (api/get-all-collections dbname)]
     (cond
-     (t/right? result)
-     (ok (mapv to-plain-object (t/from-either result)))
+     (either/right? result)
+     (ok (mapv to-plain-object (either/from-either result)))
 
-     (t/left? result)
+     (either/left? result)
      (left-as-response result))))
 
 (defn collection-create
@@ -110,10 +111,10 @@
         collname (:collname params)
         result   (api/create-collection dbname collname)]
     (cond
-     (t/right? result)
-     (created (to-plain-object (t/from-either result)))
+     (either/right? result)
+     (created (to-plain-object (either/from-either result)))
 
-     (t/left? result)
+     (either/left? result)
      (left-as-response result))))
 
 (defn collection-drop
@@ -122,9 +123,8 @@
         collname (:collname params)
         result (api/drop-collection dbname collname)]
     (cond
-     (t/right? result)
+     (either/right? result)
      (no-content)
 
-     (t/left? result)
+     (either/left? result)
      (left-as-response result))))
-

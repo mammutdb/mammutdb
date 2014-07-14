@@ -25,7 +25,7 @@
 (ns mammutdb.core.safe
   "Generic function for string safety checks."
   (:require [cats.core :as m]
-            [cats.types :as t]
+            [cats.monad.either :as either]
             [mammutdb.core.errors :as e]))
 
 (defn check-database-name-safety
@@ -33,7 +33,7 @@
      (check-database-name-safety name #"[\w\_\-]+"))
   ([^String name rx]
      (if (re-matches rx name)
-       (t/right name)
+       (either/right name)
        (e/error :database-name-unsafe))))
 
 (defn check-collection-name-safety
@@ -41,6 +41,5 @@
      (check-collection-name-safety name #"[\w\_\-]+"))
   ([^String name rx]
      (if (re-matches rx name)
-       (t/right name)
+       (either/right name)
        (e/error :collection-name-unsafe))))
-

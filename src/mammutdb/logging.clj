@@ -24,7 +24,7 @@
 
 (ns mammutdb.logging
   "Logging implementation for mammutdb."
-  (:require [cats.types :as t]
+  (:require [cats.monad.either :as either]
             [cats.core :as m]
             [clj-time.format :as tfmt]
             [clj-time.core :as time])
@@ -90,4 +90,4 @@
                 :debug (.log @*logger* Level/FINE message exception)
                 :warn (.log @*logger* Level/WARNING message exception))
               (inc v)))
-  (t/right nil))
+  (either/right nil))

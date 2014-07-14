@@ -23,7 +23,7 @@
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (ns mammutdb.storage.database
-  (:require [cats.types :as t]
+  (:require [cats.monad.either :as either]
             [cats.core :as m]
             [jdbc.core :as j]
             [clojure.string :as str]
@@ -58,7 +58,7 @@
                 (sp/get-database-name db)]]
       (serr/catch-sqlexception
        (j/execute-prepared! con sql1)
-       (t/right))))
+       (either/right))))
 
   sp/Serializable
   (to-plain-object [db]
@@ -89,7 +89,7 @@
   (m/mlet [:let [sql "SELECT id, name, created_at
                       FROM mammutdb_databases ORDER BY name;"]
            res  (sconn/query conn sql)]
-    (t/right (mapv record->database res))))
+    (either/right (mapv record->database res))))
 
 (defn get-database-by-name
   [name conn]
@@ -123,11 +123,10 @@
            (fn [existsresult]
              (if (:exists existsresult)
                (e/error :database-exists (format "Database '%s' is already exists." name))
-               (t/right)))
+               (either/right)))
            (fn [_] (sconn/execute-prepared! conn sqlinsert {:returning :all}))
            (fn [recs] (m/return (record->database (first recs)))))))
 
 (defn drop-database
   [db con]
   (sp/drop db con))
-

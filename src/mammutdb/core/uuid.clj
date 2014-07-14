@@ -24,8 +24,7 @@
 
 (ns mammutdb.core.uuid
   "Uuid monadic constructors."
-  (:require [cats.types :as t]
-            [mammutdb.core.errors :as e]))
+  (:require [mammutdb.core.errors :as e]))
 
 (defn random-uuid
   "Generate a random uuid (type 4)"

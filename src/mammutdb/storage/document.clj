@@ -23,7 +23,7 @@
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (ns mammutdb.storage.document
-  (:require [cats.types :as t]
+  (:require [cats.monad.either :as either]
             [cats.core :as m]
             [clojure.string :as str]
             [clj-time.core :as jt]
@@ -90,7 +90,7 @@
         id      (or (.-id doc) (random-uuid))
         data    (.-data doc)
         sqldata (-> (json/from-native data)
-                    (t/from-either))
+                    (either/from-either))
         sqlts   (jc/to-sql-time ts)
         revid   1
         revhash (make-new-revhash false 0 "" sqldata)
@@ -109,7 +109,7 @@
         id      (.-id doc)
         data    (.-data doc)
         sqldata (-> (json/from-native data)
-                    (t/from-either))
+                    (either/from-either))
         sqlts   (jc/to-sql-time ts)
         revid   (inc (:revid prevdoc))
         revhash (make-new-revhash false
@@ -145,11 +145,11 @@
 (defn- parse-rev
   [rev]
   (if (nil? rev)
-    (t/right rev)
+    (either/right rev)
     (try
       (let [[revid revhash] (str/split rev #"-" 2)
             revid           (Long/parseLong revid)]
-        (t/right [revid revhash]))
+        (either/right [revid revhash]))
       (catch Exception exc
         (log :debug "Invalid rev format passed" exc)
         (e/error :invalid-rev-format)))))

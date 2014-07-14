@@ -23,8 +23,7 @@
 ;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (ns mammutdb.core.revs
-  (:require [cats.types :as t]
-            [taoensso.nippy :as nippy]
+  (:require [taoensso.nippy :as nippy]
             [buddy.core.codecs :refer [->byte-array bytes->hex]]
             [buddy.core.hash :as hash]
             [mammutdb.core.errors :as e]))
