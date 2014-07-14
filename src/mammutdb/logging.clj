@@ -63,14 +63,14 @@
 (defn make-logger-handler
   [formatter]
   (doto (ConsoleHandler.)
-    (.setLevel Level/ALL)
+    (.setLevel Level/INFO)
     (.setFormatter formatter)))
 
 (defn make-logger
   [handler]
   (doto (Logger/getAnonymousLogger)
     (.setUseParentHandlers false)
-    (.setLevel Level/ALL)
+    (.setLevel Level/INFO)
     (.addHandler handler)))
 
 (def ^{:dynamic :true
