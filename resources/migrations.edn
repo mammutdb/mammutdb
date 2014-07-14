@@ -11,7 +11,7 @@
 
  :v1 {:collections-create-table
       "CREATE TABLE mammutdb_collections (
-         id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
+         id serial UNIQUE PRIMARY KEY,
          name varchar(1024),
          type varchar(255),
          database varchar(1024),
@@ -22,14 +22,14 @@
 
       :users-create-table
       "CREATE TABLE mammutdb_users (
-         id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
+         id serial UNIQUE PRIMARY KEY,
          username varchar(255) UNIQUE,
          password varchar(255) DEFAULT '!'
        );"}
 
  :v2 {:databases-table
       "CREATE TABLE mammutdb_databases (
-         id uuid DEFAULT uuid_generate_v1() UNIQUE PRIMARY KEY,
+         id serial UNIQUE PRIMARY KEY,
          name varchar(255) UNIQUE,
          created_at timestamp with time zone DEFAULT now()
        );"}}
