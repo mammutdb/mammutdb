@@ -72,7 +72,7 @@
     (cond
      (:help options)
      (do
-       (usage summary)
+       (println (usage summary))
        (exit 0))
 
      (:config options)
@@ -82,5 +82,5 @@
 
      :else
      (do
-       (usage summary)
+       (println (usage summary))
        (exit 0)))))
