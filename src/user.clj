@@ -27,9 +27,13 @@
   (refresh :after 'user/go))
 
 (defn test
-  []
-  (run-tests 'mammutdb.test-api
-             'mammutdb.test-auth
-             'mammutdb.test-config
-             'mammutdb.test-query
-             'mammutdb.test-storage))
+  ([]
+   (refresh)
+   (run-tests 'mammutdb.test-api
+              'mammutdb.test-auth
+              'mammutdb.test-config
+              'mammutdb.test-query
+              'mammutdb.test-storage
+              'mammutdb.test-transaction))
+  ([& namespaces]
+     (apply run-tests namespaces)))
