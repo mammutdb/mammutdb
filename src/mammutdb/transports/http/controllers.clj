@@ -27,8 +27,7 @@
             [cats.monad.maybe :as maybe]
             [cats.monad.either :as either]
             [mammutdb.api :as api]
-            [mammutdb.transports.http.conversions :as conv]
-            [mammutdb.transports.http.protocols :refer [to-plain-object]]
+            [mammutdb.storage :as s]
             [mammutdb.transports.http.response :refer :all]))
 
 (defn home-ctrl
@@ -62,8 +61,13 @@
   (let [mresult (api/get-all-databases)
         result  (either/from-either mresult)]
     (cond
+<<<<<<< HEAD
      (either/right? mresult)
      (ok (mapv to-plain-object result))
+=======
+     (t/right? mresult)
+     (ok (mapv s/to-plain-object result))
+>>>>>>> Fix http controllers.
 
      (either/left? mresult)
      (left-as-response mresult))))
@@ -74,7 +78,7 @@
         result (api/create-database dbname)]
     (cond
      (either/right? result)
-     (created (to-plain-object (either/from-either result)))
+     (created (s/to-plain-object (either/from-either result)))
 
      (either/left? result)
      (left-as-response result))))
@@ -100,7 +104,7 @@
         result (api/get-all-collections dbname)]
     (cond
      (either/right? result)
-     (ok (mapv to-plain-object (either/from-either result)))
+     (ok (mapv s/to-plain-object (either/from-either result)))
 
      (either/left? result)
      (left-as-response result))))
@@ -112,7 +116,7 @@
         result   (api/create-collection dbname collname)]
     (cond
      (either/right? result)
-     (created (to-plain-object (either/from-either result)))
+     (created (s/to-plain-object (either/from-either result)))
 
      (either/left? result)
      (left-as-response result))))
