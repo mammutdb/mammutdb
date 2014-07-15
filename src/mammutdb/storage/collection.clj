@@ -129,6 +129,7 @@
                  revid bigint,
                  revhash varchar(255),
                  created_at timestamp with time zone,
+                 deleted boolean DEFAULT FALSE,
                  UNIQUE (id, revid, revhash)
                 );")))
 

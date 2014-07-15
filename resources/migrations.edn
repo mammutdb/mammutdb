@@ -32,5 +32,7 @@
          id serial UNIQUE PRIMARY KEY,
          name varchar(255) UNIQUE,
          created_at timestamp with time zone DEFAULT now()
-       );"}}
+       );"}
 
+ :v3 {:add-deleted-flag
+      "ALTER TABLE %s ADD COLUMN deleted DEFAULT FALSE;"}}
