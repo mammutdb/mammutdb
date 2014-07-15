@@ -52,5 +52,6 @@
     (let [response (handler request)]
       (->
        response
+       (update-in [:headers "Access-Control-Allow-Methods"] (fn [_] "POST, GET, PUT, DELETE, OPTIONS "))
        (update-in [:headers "Access-Control-Allow-Headers"] (fn [_] "Accept, Content-Type"))
        (update-in [:headers "Access-Control-Allow-Origin"] (fn [_] "*"))))))
