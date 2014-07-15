@@ -99,4 +99,4 @@
                 db     (s/get-database-by-name dbname conn)
                 coll   (s/get-collection-by-name db name conn)]
                (s/drop-document-by-id coll id conn)))
-     (s/transaction {:readonly true})))
+     (s/transaction {:readonly false})))
