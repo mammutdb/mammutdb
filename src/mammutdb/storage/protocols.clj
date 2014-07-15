@@ -59,6 +59,7 @@
   (persist-document [_ doc opts conn] "Persist document"))
 
 (defprotocol DocumentQueryable
+  (get-documents [_ filters conn] "List and/or filter documents.")
   (get-document-by-rev [_ id rev conn] "Search document by id and rev")
   (get-document-by-id [_ id conn] "Get document by id"))
 

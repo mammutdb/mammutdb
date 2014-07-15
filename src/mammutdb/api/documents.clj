@@ -57,6 +57,16 @@
               (s/persist-document coll opts data conn)))
           (s/transaction {:readonly false}))))
 
+(defn get-documents
+  [^String db ^String coll]
+  (->> (fn [conn]
+         (m/mlet [dbname (check-database-name-safety db)
+                  name   (check-collection-name-safety coll)
+                  db     (s/get-database-by-name dbname conn)
+                  coll   (s/get-collection-by-name db coll conn)]
+           (s/get-documents coll {} conn)))
+       (s/transaction {:readonly true})))
+
 (defn get-document-by-id
   ([^String db ^String coll ^String id]
      (get-document-by-id db coll id {}))

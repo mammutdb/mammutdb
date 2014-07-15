@@ -111,6 +111,27 @@
       (is (= (:status res) 201))
       (is (= (get-in res [:body :foo] "bar")))))
 
+  (api/drop-collection "sampledb" "samplecoll")
+  (api/create-collection "sampledb" "samplecoll")
+
+  (testing "Get document list (without any filtering)"
+    (let [docdata (-> (json/encode {:foo "bar"})
+                      (either/from-either))]
+      (api/persist-document "sampledb" "samplecoll" docdata)
+      (api/persist-document "sampledb" "samplecoll" docdata)
+      (api/persist-document "sampledb" "samplecoll" docdata)
+      (api/persist-document "sampledb" "samplecoll" docdata)
+
+    (let [req {:params {:dbname "sampledb"
+                        :collname "samplecoll"}}
+          res (ctrls/document-list req)]
+      (is (= (:status res) 200))
+      (is (vector? (:body res)))
+      (is (= (count (:body res)) 4)))))
+
+  (api/drop-collection "sampledb" "samplecoll")
+  (api/create-collection "sampledb" "samplecoll")
+
   (testing "Get basic detail by id"
     (let [docdata (-> (json/encode {:foo "bar", :_id "foo"})
                       (either/from-either))]

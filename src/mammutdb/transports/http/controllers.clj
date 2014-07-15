@@ -132,16 +132,17 @@
 ;; Documents Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (defn document-list
-;;   [{:keys [params] :as req}]
-;;   (let [dbname (:dbname params)
-;;         result (api/get-documents dbname)]
-;;     (cond
-;;      (either/right? result)
-;;      (ok (mapv s/to-plain-object (either/from-either result)))
+(defn document-list
+  [{:keys [params] :as req}]
+  (let [dbname   (:dbname params)
+        collname (:collname params)
+        result   (api/get-documents dbname collname)]
+    (cond
+     (either/right? result)
+     (ok (mapv s/to-plain-object (either/from-either result)))
 
-;;      (either/left? result)
-;;      (left-as-response result))))
+     (either/left? result)
+     (left-as-response result))))
 
 (defn document-detail
   [{:keys [params] :as req}]

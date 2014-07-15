@@ -103,6 +103,25 @@
     (api/drop-collection "foodb" "collname1")
     (api/drop-database "foodb"))
 
+  (testing "Get all documents (without any filtering)"
+    (let [mdb     (api/create-database "foodb")
+          mcoll   (api/create-collection "foodb" "collname1")
+          docdata (-> (json/encode {:name "foo"})
+                      (either/from-either))]
+      (api/persist-document "foodb" "collname1" docdata)
+      (api/persist-document "foodb" "collname1" docdata)
+      (api/persist-document "foodb" "collname1" docdata)
+      (api/persist-document "foodb" "collname1" docdata)
+
+      (let [mres (api/get-documents "foodb" "collname1")
+            res  (either/from-either mres)]
+        (is (either/right? mres))
+        (is (= (count res) 4))))
+
+    (api/drop-collection "foodb" "collname1")
+    (api/drop-database "foodb"))
+
+
   (testing "Common crud functions"
     (let [mdb     (api/create-database "foodb")
           mcoll   (api/create-collection "foodb" "collname1")
@@ -147,6 +166,5 @@
 
     (api/drop-collection "foodb" "collname1")
     (api/drop-database "foodb"))
-
 )
 

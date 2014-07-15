@@ -205,7 +205,14 @@
                                 revid = ? AND revhash = ?;" <>)
                        (vector <> id revid revhash)
                        (sconn/query-first conn <>))]
-      (m/return (sp/record->document coll rec)))))
+      (m/return (sp/record->document coll rec))))
+
+  (get-documents [coll filters conn]
+    (m/mlet [res (->> (sp/get-mainstore-tablename coll)
+                      (format "SELECT * FROM %s;")
+                      (sconn/query conn))]
+      (-> (mapv (partial sp/record->document coll) res)
+          (m/sequence)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public Api
@@ -224,6 +231,10 @@
      (persist-document coll {} data conn))
   ([coll opts data conn]
      (sp/persist-document coll opts data conn)))
+
+(defn get-documents
+  [coll filters conn]
+  (sp/get-documents coll filters conn))
 
 (defn get-document-by-id
   [coll id conn]
