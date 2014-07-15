@@ -35,8 +35,8 @@ see the changelog or below development phases state.
 
 ### First phase ###
 
-- [ ] Basic crud for Documents/Collections/Databases
-- [ ] Full transactionality support on high level database api.
+- [x] Basic crud for Documents/Collections/Databases
+- [x] Full transactionality support on high level database api.
 - [ ] Transaction log.
 - [ ] Navigability through transaction-log/revisions of one document.
 - [ ] Optionally optimistic concurrency control for collections.
