@@ -28,15 +28,15 @@
             [mammutdb.transports.http.controllers :as ctrl]))
 
 (defroutes main-routes
-  (ANY "/" [] ctrl/home-ctrl)
+  ;; (ANY "/" [] ctrl/home-ctrl)
 
-  (GET "/databases" [] ctrl/databases-list)
-  (PUT "/databases/:dbname" [] ctrl/databases-create)
+  (GET "/" [] ctrl/databases-list)
+  (PUT "/:dbname" [] ctrl/databases-create)
   (DELETE "/databases/:dbname" [] ctrl/databases-drop)
 
-  (GET "/databases/:dbname" [] ctrl/collection-list)
-  (PUT "/databases/:dbname/:collname" [] ctrl/collection-create)
-  (DELETE "/databases/:dbname/:collname" [] ctrl/collection-drop)
+  (GET "/:dbname" [] ctrl/collection-list)
+  (PUT "/:dbname/:collname" [] ctrl/collection-create)
+  (DELETE "/:dbname/:collname" [] ctrl/collection-drop)
 
-  (POST "/databases/:dbname/:collname" [] ctrl/document-create)
-  (GET "/databases/:dbname/:collname/:docid" [] ctrl/document-detail))
+  (POST "/:dbname/:collname" [] ctrl/document-create)
+  (GET "/:dbname/:collname/:docid" [] ctrl/document-detail))
