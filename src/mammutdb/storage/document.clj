@@ -57,6 +57,10 @@
          (= revhash (.-revhash other))))
 
   sp/Document
+  (rev [document]
+    (format "%s-%s" (.-revid document)
+                    (.-revhash document)))
+
   (document->record [_]
     {:id id
      :revid revid
@@ -73,9 +77,7 @@
   (to-plain-object [document]
     (merge (.-data document)
            {:_id (.-id document)
-            :_rev (format "%s-%s"
-                          (.-revid document)
-                          (.-revhash document))}))
+            :_rev (sp/rev document)}))
 
   sp/Droppable
   (drop [self conn]
@@ -219,12 +221,14 @@
   (get-document-by-rev [coll id rev conn]
     (m/mlet [rev  (parse-rev rev)
              :let [[revid revhash] rev]
-             rec  (-<> (sp/get-mainstore-tablename coll)
+             rec  (-<> (sp/get-revisions-tablename coll)
                        (format "SELECT * FROM %s WHERE id = ? AND
                                 revid = ? AND revhash = ?;" <>)
                        (vector <> id revid revhash)
                        (sconn/query-first conn <>))]
-      (m/return (sp/record->document coll rec))))
+            (if (nil? rec)
+              (e/error :document-does-not-exist)
+              (sp/record->document coll rec))))
 
   (get-documents [coll filters conn]
     (m/mlet [res (->> (sp/get-mainstore-tablename coll)
@@ -260,9 +264,9 @@
   [coll id conn]
   (sp/get-document-by-id coll id conn))
 
-;; (defn get-document-by-rev
-;;   [coll id rev conn]
-;;   (sp/get-document-by-rev coll id rev conn))
+(defn get-document-by-rev
+  [coll id rev conn]
+  (sp/get-document-by-rev coll id rev conn))
 
 (defn drop-document
   [doc conn]
@@ -272,3 +276,7 @@
   [coll id conn]
   (m/>>= (get-document-by-id coll id conn)
          (fn [doc] (drop-document doc conn))))
+
+(defn rev
+  [doc]
+  (sp/rev doc))

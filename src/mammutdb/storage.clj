@@ -42,9 +42,10 @@
   document?
   json->document
   persist-document
-  ;; get-document-by-rev
   get-documents
   get-document-by-id
+  get-document-by-rev
+  rev
   drop-document
   drop-document-by-id]
 

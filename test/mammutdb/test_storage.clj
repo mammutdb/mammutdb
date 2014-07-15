@@ -245,4 +245,33 @@
         (s/drop-collection coll conn)
         (s/drop-database db conn))))
 
-)
+  (testing "The JSON documents can be queried in any point in time"
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [db   (s/->database "testdb")
+            coll (either/from-either (s/create-collection db "testcoll" :json conn))]
+
+        (let [docdata  (-> (json/encode {:name "foo"})
+                          (either/from-either))
+              mdoc     (s/persist-document coll docdata conn)
+              doc      (either/from-either mdoc)
+              docdata2 (-> (s/to-plain-object doc)
+                          (assoc :name "bar")
+                          (json/encode)
+                          (either/from-either))
+              mdoc2    (s/persist-document coll docdata2 conn)
+              doc2     (either/from-either mdoc2)]
+
+          (is (either/right? mdoc))
+          (is (= (.-revid doc) 1))
+          (is (either/right? mdoc2))
+          (is (= (.-revid doc2) 2))
+
+          (let [qmdoc  (s/get-document-by-rev coll (.-id doc) (s/rev doc) conn)
+                qmdoc2 (s/get-document-by-rev coll (.-id doc2) (s/rev doc2) conn)]
+            (is (either/right? qmdoc))
+            (is (either/right? qmdoc2))
+            (is (= doc (either/from-either qmdoc)))
+            (is (= doc2 (either/from-either qmdoc2))))
+
+        (s/drop-collection coll conn)
+        (s/drop-database db conn))))))

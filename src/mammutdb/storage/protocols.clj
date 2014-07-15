@@ -49,6 +49,7 @@
 (defprotocol Document
   "Any document representation type
   should implement this protocol."
+  (rev [doc] "Get the revision of this document")
   (document->record [doc] "Convert document to record")
   (get-collection [doc] "Get associated collection"))
 
