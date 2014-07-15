@@ -44,3 +44,13 @@
                         (str (:uri req))
                         (str (:query-string req))))
     (handler req)))
+
+(defn wrap-cors
+  "Allow requests from all origins"
+  [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (->
+       response
+       (update-in [:headers "Access-Control-Allow-Headers"] (fn [_] "Accept, Content-Type"))
+       (update-in [:headers "Access-Control-Allow-Origin"] (fn [_] "*"))))))
