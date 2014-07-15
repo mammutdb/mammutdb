@@ -24,64 +24,139 @@
 
 (ns mammutdb.storage.query
   (:require [clojure.string :as str]
-            [clojure.core.match :refer [match]]))
+            [clojure.core.match :refer [match]]
+            [schema.core :as s]))
 
-(declare make-filter)
-(declare make-query)
+(declare build-where-clause)
+(declare build-select-clause)
+(declare build-ordering-clause)
+(declare parse-fieldname)
 
-(defn- make-filter-combinator
-  [fieldname combstr optrest]
-  (let [filters (mapv (partial make-filter fieldname) optrest)
-        clauses (->> (mapv first filters)
-                     (interpose combstr)
+(def ^:dynamic *nested-scope* 0)
+(def ^:private query-schema
+  {:select [s/Keyword]
+   :table s/Keyword
+   (s/optional-key :where) [s/Any]
+   (s/optional-key :limit) s/Int
+   (s/optional-key :offset) s/Int
+   (s/optional-key :orderby) [s/Keyword]})
+
+(defn- build-query-reducer
+  [opts [sql params] key]
+  (case key
+    :select
+    (let [select (:select opts)]
+      [(str sql "SELECT " (build-select-clause select)) params])
+
+    :where
+    (let [where       (:where opts)
+          where       (build-where-clause where)
+          whereclause (first where)
+          whereparams (rest where)]
+      [(str sql " WHERE " whereclause)
+       (apply conj params whereparams)])
+
+    :table
+    (let [table (name (:table opts))]
+      [(str sql " FROM " table) params])
+
+    :orderby
+    (let [orderby (:orderby opts)]
+      [(str sql " ORDER BY " (build-ordering-clause orderby)) params])
+
+    :limit
+    (let [limit (:limit opts)]
+      [(str sql " LIMIT ?")
+       (conj params limit)])
+
+    :offset
+    (let [offset (:offset opts)]
+      [(str sql " OFFSET ?")
+       (conj params offset)])))
+
+(defn build-query
+  [opts]
+  {:pre [(s/validate query-schema opts)]}
+  (let [orderedopts  [:select :table :where :orderby :limit :offset]
+        [sql params] (reduce (partial build-query-reducer opts) ["" []] orderedopts)]
+    (apply vector sql params)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Select clause
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn build-select-clause
+  [fields]
+  (->> (map name fields)
+       (interpose ", ")
+       (str/join "")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Order By Clause
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn build-ordering-clause
+  [fields]
+  (->> fields
+       (map name)
+       (map (fn [field]
+              (if (= (subs field 0 1) "-")
+                (str (parse-fieldname (subs field 1)) " DESC")
+                (str (parse-fieldname field) " ASC"))))
+       (str/join ", ")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Where clause
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: validate fieldname string for avoid sql injections
+
+(defn- parse-fieldname
+  [fieldname]
+
+  (cond
+   (= fieldname "_rev")
+   "(revid::text || '-' || revhash)"
+
+   (= (subs fieldname 0 1) "_")
+   (subs fieldname 1)
+
+   :else
+   (format "data->'%s'" fieldname)))
+
+(defn- build-combined-clause
+  [op criterias]
+
+  (let [op      (case op :and "AND" :or "OR")
+        filters (mapv build-where-clause criterias)
+        clauses (->> (map first filters)
+                     ;; (map (partial format "(%s)"))
+                     (interpose op)
                      (str/join " "))
-        params  (mapv second filters)]
-    (apply vector (format "(%s)" clauses) params)))
+        params  (mapcat rest filters)]
+    (if (> *nested-scope* 1)
+      (apply vector (format "(%s)" clauses) params)
+      (apply vector (format "%s" clauses) params))))
 
-(defn make-filter
+(defn- build-simple-clause
   "Build sql where clause for filtering
   by one field with one or combined criteria."
-  [fieldname filterdata]
-  {:pre [(vector? filterdata)
-         (> (count filterdata) 1)
-         (keyword? (first filterdata))]}
-  (let [[opt & optrest] filterdata]
-    (case opt
-      :gt  [(format "(%s > ?)" fieldname)
-            (first optrest)]
-      :lt  [(format "(%s < ?)" fieldname)
-            (first optrest)]
-      :gte [(format "(%s >= ?)" fieldname)
-            (first optrest)]
-      :lte [(format "(%s <= ?)" fieldname)
-            (first optrest)]
-      :or  (make-filter-combinator fieldname "OR" optrest)
-      :and  (make-filter-combinator fieldname "AND" optrest))))
+  [[op field value :as criteria]]
+  (case op
+    :eq  [(format "%s = ?" (parse-fieldname field)) value]
+    :gt  [(format "%s > ?" (parse-fieldname field)) value]
+    :lt  [(format "%s < ?" (parse-fieldname field)) value]
+    :gte [(format "%s >= ?" (parse-fieldname field)) value]
+    :lte [(format "%s <= ?" (parse-fieldname field)) value]))
 
-(defn- make-query-combinator
-  [operator criterias]
-  (let [filters (mapv make-query criterias)
-        clauses (->> (mapv first filters)
-                     (interpose operator)
-                     (str/join " "))
-        params  (mapv second filters)]
-    (apply vector (format "(%s)" clauses) params)))
-
-(defn make-query
-  "Build sql where clause for make a complex query
-  having different fields.
-
-  Criteria example:
-    [:or [\"fieldname\" :gt 2] [\"fieldname\" :lt 100]]
-  "
-  [criteria]
-  {:pre [(vector?  criteria)
-         (> (count criteria) 1)]}
-  (match criteria
-    [field :gt value]  (make-filter field [:gt value])
-    [field :lt value]  (make-filter field [:lt value])
-    [field :gte value] (make-filter field [:gte value])
-    [field :lte value] (make-filter field [:lte value])
-    [:or & rest]       (make-query-combinator "OR" rest)
-    [:and & rest]      (make-query-combinator "AND" rest)))
-
+(defn build-where-clause
+  [[op & rest :as criteria]]
+  (binding [*nested-scope* (inc *nested-scope*)]
+    (case op
+      :eq  (build-simple-clause criteria)
+      :lt  (build-simple-clause criteria)
+      :gt  (build-simple-clause criteria)
+      :lte (build-simple-clause criteria)
+      :gte (build-simple-clause criteria)
+      :and (build-combined-clause :and rest)
+      :or  (build-combined-clause :or rest))))

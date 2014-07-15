@@ -28,12 +28,13 @@
 
 (defn test
   ([]
-   (refresh)
-   (run-tests 'mammutdb.test-api
-              'mammutdb.test-auth
-              'mammutdb.test-config
-              'mammutdb.test-query
-              'mammutdb.test-storage
-              'mammutdb.test-transaction))
+     (refresh)
+     (run-tests 'mammutdb.test-api
+                'mammutdb.test-auth
+                'mammutdb.test-config
+                'mammutdb.test-query
+                'mammutdb.test-storage
+                'mammutdb.test-transaction))
   ([& namespaces]
+     (refresh)
      (apply run-tests namespaces)))
