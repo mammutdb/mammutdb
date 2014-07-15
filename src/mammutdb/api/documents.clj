@@ -79,17 +79,17 @@
               (s/get-document-by-id coll id conn)))
           (s/transaction {:readonly true}))))
 
-;; (defn get-document-by-rev
-;;   ([^String db ^String coll ^String id]
-;;      (get-document-by-id db coll id {}))
-;;   ([^String db ^String coll ^String id options]
-;;      (->> (fn [conn]
-;;             (m/mlet [dbname (check-database-name-safety db)
-;;                      name   (check-collection-name-safety coll)
-;;                      db     (s/get-database-by-name dbname conn)
-;;                      coll   (s/get-collection-by-name db name conn)]
-;;               (s/get-document-by-id coll id conn)))
-;;           (s/transaction {:readonly true}))))
+(defn get-document-by-rev
+  ([^String db ^String coll ^String id ^String rev]
+     (get-document-by-id db coll id {}))
+  ([^String db ^String coll ^String id ^String rev options]
+     (->> (fn [conn]
+            (m/mlet [dbname (check-database-name-safety db)
+                     name   (check-collection-name-safety coll)
+                     db     (s/get-database-by-name dbname conn)
+                     coll   (s/get-collection-by-name db name conn)]
+              (s/get-document-by-rev coll id rev conn)))
+          (s/transaction {:readonly true}))))
 
 (defn drop-document-by-id
   [^String db ^String coll ^String id]

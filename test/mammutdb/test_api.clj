@@ -166,6 +166,24 @@
     (api/drop-collection "foodb" "collname1")
     (api/drop-database "foodb"))
 
+  (testing "Get documents by revision"
+    (let [mdb     (api/create-database "foodb")
+          mcoll   (api/create-collection "foodb" "collname1")
+          docdata (-> (json/encode {:name "foo"})
+                      (either/from-either))
+          mdoc    (api/persist-document "foodb" "collname1" docdata)
+          doc     (either/from-either mdoc)
+          rev-mdoc (api/get-document-by-rev "foodb"
+                                            "collname1"
+                                            (.-id doc)
+                                            (s/rev doc))]
+      (is (either/right? rev-mdoc))
+      (is (= doc
+             (either/from-either rev-mdoc)))
+
+      (api/drop-collection "foodb" "collname1")
+      (api/drop-database "foodb")))
+
   (let [mdb     (api/create-database "foodb")
         mcoll   (api/create-collection "foodb" "collname1")]
 
