@@ -40,4 +40,6 @@
 
   (GET "/:dbname/:collname" [] ctrl/document-list)
   (POST "/:dbname/:collname" [] ctrl/document-create)
-  (GET "/:dbname/:collname/:docid" [] ctrl/document-detail))
+  (GET "/:dbname/:collname/:docid" [] ctrl/document-detail)
+  (DELETE "/:dbname/:collname/:docid" [] ctrl/document-drop)
+)

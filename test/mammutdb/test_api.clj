@@ -138,6 +138,7 @@
       (is (= (.-revhash doc) (str "cc56548b1eddfa72a44f9e19ee92edd7"
                                   "03f77583afef68a96b84dfa441ba4bb0")))
       (is (= (.-data doc) {:name "foo"}))
+
       (let [docdata (-> (s/to-plain-object doc)
                         (assoc :name "bar")
                         (json/encode)

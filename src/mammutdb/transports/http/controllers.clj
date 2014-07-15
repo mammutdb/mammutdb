@@ -170,15 +170,14 @@
      (either/left? result)
      (left-as-response result))))
 
-;; (defn document-drop
-;;   [{:keys [params] :as req}]
-;;   (let [dbname   (:dbname params)
-;;         collname (:collname params)
-;;         result (api/drop-collection dbname collname)]
-;;     (cond
-;;      (either/right? result)
-;;      (no-content)
-;;
-;;      (either/left? result)
-;;      (left-as-response result))))
-
+(defn document-drop
+  [{:keys [params] :as req}]
+  (let [dbname   (:dbname params)
+        collname (:collname params)
+        docid (:docid params)
+        result (api/drop-document-by-id dbname collname docid)]
+    (cond
+     (either/right? result)
+       (no-content)
+     (either/left? result)
+       (left-as-response result))))
