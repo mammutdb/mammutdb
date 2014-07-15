@@ -177,4 +177,24 @@
       (is (= (:status res) 404))))
 
   (api/drop-collection "sampledb" "samplecoll")
+  (api/drop-database "sampledb")
+
+  (api/drop-collection "sampledb" "samplecoll")
+  (api/create-collection "sampledb" "samplecoll")
+
+  (testing "Get document by revision"
+    (let [docdata (-> (json/encode {:foo "bar", :_id "foo"})
+                      (either/from-either))
+          doc (-> (api/persist-document "sampledb" "samplecoll" docdata)
+                  (either/from-either))
+          req {:params {:dbname "sampledb"
+                        :collname "samplecoll"
+                        :docid "foo"
+                        :rev (s/rev doc)}}
+          res (ctrls/document-revs-detail req)]
+      (is (= (:status res) 200))
+      (is (= (get-in res [:body :foo] "bar")))
+      (is (= (get-in res [:body :_id] "foo")))))
+
+  (api/drop-collection "sampledb" "samplecoll")
   (api/drop-database "sampledb"))

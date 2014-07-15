@@ -181,3 +181,20 @@
        (no-content)
      (either/left? result)
        (left-as-response result))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Documents Revision Api
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn document-revs-detail
+  [{:keys [params] :as req}]
+  (let [dbname   (:dbname params)
+        collname (:collname params)
+        docid (:docid params)
+        rev (:rev params)
+        result (api/get-document-by-rev  dbname collname docid rev)]
+    (cond
+     (either/right? result)
+       (ok (s/to-plain-object (either/from-either result)))
+     (either/left? result)
+       (left-as-response result))))

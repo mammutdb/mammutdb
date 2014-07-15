@@ -42,4 +42,9 @@
   (POST "/:dbname/:collname" [] ctrl/document-create)
   (GET "/:dbname/:collname/:docid" [] ctrl/document-detail)
   (DELETE "/:dbname/:collname/:docid" [] ctrl/document-drop)
+
+  ;; TODO
+  ;; (GET "/:dbname/:collname/:docid/revs" [] ctrl/document-revs-list)
+  (GET "/:dbname/:collname/:docid/revs/:rev" [] ctrl/document-revs-detail)
+
 )
