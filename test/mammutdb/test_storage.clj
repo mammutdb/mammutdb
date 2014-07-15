@@ -223,4 +223,26 @@
         (s/drop-collection coll conn)
         (s/drop-database db conn))))
 
+  (testing "The JSON documents can be dropped given their id"
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [db   (s/->database "testdb")
+            coll (either/from-either (s/create-collection db "testcoll" :json conn))]
+
+        (let [docdata (-> (json/encode {:name "foo"})
+                          (either/from-either))
+              mdoc    (s/persist-document coll docdata conn)
+              doc     (either/from-either mdoc)]
+          (is (either/right? mdoc))
+          (is (= (.-revid doc) 1))
+
+          (either/right? (s/get-document-by-id coll (.-id doc) conn))
+          (is (= doc
+                 (either/from-either (s/get-document-by-id coll (.-id doc) conn))))
+
+          (is (either/right? (s/drop-document-by-id coll (.-id doc) conn)))
+          (is (either/left? (s/get-document-by-id coll (.-id doc) conn))))
+
+        (s/drop-collection coll conn)
+        (s/drop-database db conn))))
+
 )

@@ -45,7 +45,8 @@
   ;; get-document-by-rev
   get-documents
   get-document-by-id
-  drop-document]
+  drop-document
+  drop-document-by-id]
 
  [collection
 

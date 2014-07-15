@@ -267,3 +267,8 @@
 (defn drop-document
   [doc conn]
   (sp/drop doc conn))
+
+(defn drop-document-by-id
+  [coll id conn]
+  (m/>>= (get-document-by-id coll id conn)
+         (fn [doc] (drop-document doc conn))))
