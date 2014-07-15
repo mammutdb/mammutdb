@@ -39,17 +39,21 @@
    {:msg "Collection does not exist"
     :http-code :404}
 
-   :database-does-not-exist
-   {:msg "Database does not exist"
-    :http-code :404}
-
    :database-exists
    {:msg "Database already exists"
     :http-code :400}
 
+   :database-does-not-exist
+   {:msg "Database does not exist"
+    :http-code :404}
+
    :database-name-unsafe
    {:msg "Database name is unsafe"
     :http-code :400}
+
+   :document-does-not-exist
+   {:msg "Document does not exist"
+    :http-code :404}
 
    :user-does-not-exist
    {:msg "User does not exist"

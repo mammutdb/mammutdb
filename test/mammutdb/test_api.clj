@@ -138,6 +138,7 @@
       (is (= (.-revhash doc) (str "cc56548b1eddfa72a44f9e19ee92edd7"
                                   "03f77583afef68a96b84dfa441ba4bb0")))
       (is (= (.-data doc) {:name "foo"}))
+
       (let [docdata (-> (s/to-plain-object doc)
                         (assoc :name "bar")
                         (json/encode)
@@ -149,7 +150,18 @@
             (is (= (.-revid doc) 2))
             (is (= (.-revhash doc) (str "8ac3ef47802c06fe31c24670318883d4"
                                         "1bc881e8ecc01ab87309ce4d921078db")))
-            (is (= (.-data doc) {:name "bar"}))))
+            (is (= (.-data doc) {:name "bar"}))
+
+            (is (either/right? (api/get-document-by-id "foodb"
+                                                      "collname1"
+                                                      (.-id doc))))
+            (is (either/right? (api/drop-document-by-id "foodb"
+                                                        "collname1"
+                                                        (.-id doc))))
+            (is (either/left? (api/get-document-by-id "foodb"
+                                                       "collname1"
+                                                       (.-id doc))))
+     ))
 
     (api/drop-collection "foodb" "collname1")
     (api/drop-database "foodb"))
@@ -167,4 +179,3 @@
     (api/drop-collection "foodb" "collname1")
     (api/drop-database "foodb"))
 )
-

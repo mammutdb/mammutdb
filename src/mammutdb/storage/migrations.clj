@@ -28,10 +28,14 @@
             [jdbc.core :as j]
             [jdbc.transaction :as tx]
             [com.stuartsierra.component :as component]
+            [cats.core :as m]
+            [cats.monad.either :as either]
             [mammutdb.logging :refer [log]]
             [mammutdb.config :as config]
             [mammutdb.core.edn :as edn]
-            [mammutdb.storage.connection :as c]))
+            [mammutdb.storage.connection :as c]
+            [mammutdb.storage.database :as sdb]
+            [mammutdb.storage.collection :as scoll]))
 
 (declare migrations)
 
@@ -78,9 +82,19 @@
     (tx/with-transaction conn
       (j/execute! conn (:databases-table sqldata)))))
 
+(defn- migrate-v3
+  [conn]
+  (let [sql-template (get-in @sql-migrations [:v3 :add-deleted-flag])
+        maybe-dbs (sdb/get-all-databases conn)]
+    (doseq [db (either/from-either maybe-dbs)]
+      (m/>>= (scoll/get-all-collections db conn))
+             (fn [colls]
+               (m/return (map #(j/execute-prepared! conn [sql-template %]) colls))))))
+
 (def ^:private
   migrations-list [["0001" migrate-v1]
-                   ["0002" migrate-v2]])
+                   ["0002" migrate-v2]
+                   ["0003" migrate-v3]])
 
 (defn bootstrap
   "Initialize migrations system and create

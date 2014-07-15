@@ -34,6 +34,7 @@
             [mammutdb.logging :refer [log]]
             [mammutdb.core.uuid :refer [random-uuid]]
             [mammutdb.core.revs :refer [make-new-revhash]]
+            [mammutdb.storage.errors :as serr]
             [mammutdb.storage.json :as json]
             [mammutdb.storage.protocols :as sp]
             [mammutdb.storage.collection :as scoll]
@@ -74,8 +75,24 @@
            {:_id (.-id document)
             :_rev (format "%s-%s"
                           (.-revid document)
-                          (.-revhash document))})))
+                          (.-revhash document))}))
 
+  sp/Droppable
+  (drop [self conn]
+    (serr/catch-sqlexception
+     (let [sqlts   (jc/to-sql-time (jt/now))
+           sqldata (-> (json/from-native data)
+                      (either/from-either))
+           revhash (make-new-revhash true revid revhash sqldata)
+           sql1    (-<> (sp/get-revisions-tablename coll)
+                        (format "INSERT INTO %s (id, revid, revhash, data, created_at, deleted)
+                              VALUES (?, ?, ?, ?, ?, ?);" <>)
+                        (vector <> id (inc revid) revhash sqldata sqlts true))
+           sql2    (-<> (sp/get-mainstore-tablename coll)
+                        (format "DELETE FROM %s WHERE id = ?;" <>)
+                        (vector <> id))]
+       (m/>>= (sconn/execute-prepared! conn sql1)
+              (fn [_] (sconn/execute-prepared! conn sql2)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Persistence Implementation
@@ -195,7 +212,9 @@
                       (format "SELECT * FROM %s WHERE id = ?;" <>)
                       (vector <> id)
                       (sconn/query-first conn <>))]
-      (sp/record->document coll rec)))
+      (if (nil? rec)
+        (e/error :document-does-not-exist)
+        (sp/record->document coll rec))))
 
   (get-document-by-rev [coll id rev conn]
     (m/mlet [rev  (parse-rev rev)
@@ -244,3 +263,12 @@
 ;; (defn get-document-by-rev
 ;;   [coll id rev conn]
 ;;   (sp/get-document-by-rev coll id rev conn))
+
+(defn drop-document
+  [doc conn]
+  (sp/drop doc conn))
+
+(defn drop-document-by-id
+  [coll id conn]
+  (m/>>= (get-document-by-id coll id conn)
+         (fn [doc] (drop-document doc conn))))

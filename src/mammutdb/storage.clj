@@ -44,7 +44,9 @@
   persist-document
   ;; get-document-by-rev
   get-documents
-  get-document-by-id]
+  get-document-by-id
+  drop-document
+  drop-document-by-id]
 
  [collection
 

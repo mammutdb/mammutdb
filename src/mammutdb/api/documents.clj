@@ -90,3 +90,13 @@
 ;;                      coll   (s/get-collection-by-name db name conn)]
 ;;               (s/get-document-by-id coll id conn)))
 ;;           (s/transaction {:readonly true}))))
+
+(defn drop-document-by-id
+  [^String db ^String coll ^String id]
+  (->> (fn [conn]
+       (m/mlet [dbname (check-database-name-safety db)
+                name   (check-collection-name-safety coll)
+                db     (s/get-database-by-name dbname conn)
+                coll   (s/get-collection-by-name db name conn)]
+               (s/drop-document-by-id coll id conn)))
+     (s/transaction {:readonly false})))
