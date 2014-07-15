@@ -38,5 +38,6 @@
   (PUT "/:dbname/:collname" [] ctrl/collection-create)
   (DELETE "/:dbname/:collname" [] ctrl/collection-drop)
 
+  (GET "/:dbname/:collname" [] ctrl/document-list)
   (POST "/:dbname/:collname" [] ctrl/document-create)
   (GET "/:dbname/:collname/:docid" [] ctrl/document-detail))

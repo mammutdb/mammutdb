@@ -211,13 +211,14 @@
     (m/mlet [res (->> (sp/get-mainstore-tablename coll)
                       (format "SELECT * FROM %s;")
                       (sconn/query conn))]
-      (-> (mapv (partial sp/record->document coll) res)
-          (m/sequence)))))
+      (let [res (mapv (partial sp/record->document coll) res)]
+        (if (empty? res)
+          (either/right res)
+          (m/sequence res))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defn document?
   "Check if object v satisfies
   the main document protocol."

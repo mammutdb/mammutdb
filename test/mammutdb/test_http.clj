@@ -114,6 +114,17 @@
   (api/drop-collection "sampledb" "samplecoll")
   (api/create-collection "sampledb" "samplecoll")
 
+  (testing "Get list when empty"
+    (let [req {:params {:dbname "sampledb"
+                        :collname "samplecoll"}}
+          res (ctrls/document-list req)]
+      (is (= (:status res) 200))
+      (is (vector? (:body res)))
+      (is (empty? (:body res)))))
+
+  (api/drop-collection "sampledb" "samplecoll")
+  (api/create-collection "sampledb" "samplecoll")
+
   (testing "Get document list (without any filtering)"
     (let [docdata (-> (json/encode {:foo "bar"})
                       (either/from-either))]
