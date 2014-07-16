@@ -202,10 +202,10 @@
       (is (either/right? mrevs))
       (is (= 2
              (count revs)))
-      (is (= doc
-             (last revs)))
       (is (= doc2
              (first revs)))
+      (is (= doc
+             (last revs)))
 
       (api/drop-collection "foodb" "collname1")
       (api/drop-database "foodb")))

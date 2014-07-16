@@ -186,6 +186,18 @@
 ;; Documents Revision Api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn document-revs-list
+  [{:keys [params] :as req}]
+  (let [dbname   (:dbname params)
+        collname (:collname params)
+        docid (:docid params)
+        result (api/get-revisions-of dbname collname docid)]
+    (cond
+     (either/right? result)
+       (ok (map s/to-plain-object (either/from-either result)))
+     (either/left? result)
+       (left-as-response result))))
+
 (defn document-revs-detail
   [{:keys [params] :as req}]
   (let [dbname   (:dbname params)

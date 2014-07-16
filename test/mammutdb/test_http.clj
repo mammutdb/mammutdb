@@ -98,6 +98,7 @@
 (deftest document-api
   (config/setup-config! "test/testconfig.edn")
   (migrations/bootstrap)
+
   (api/create-database "sampledb")
   (api/create-collection "sampledb" "samplecoll")
 
@@ -177,9 +178,6 @@
       (is (= (:status res) 404))))
 
   (api/drop-collection "sampledb" "samplecoll")
-  (api/drop-database "sampledb")
-
-  (api/drop-collection "sampledb" "samplecoll")
   (api/create-collection "sampledb" "samplecoll")
 
   (testing "Get document by revision"
@@ -195,6 +193,30 @@
       (is (= (:status res) 200))
       (is (= (get-in res [:body :foo] "bar")))
       (is (= (get-in res [:body :_id] "foo")))))
+
+  (api/drop-collection "sampledb" "samplecoll")
+  (api/create-collection "sampledb" "samplecoll")
+
+  (testing "Get document revisions"
+    (let [docdata (-> (json/encode {:foo "bar", :_id "foo"})
+                      (either/from-either))
+          doc (-> (api/persist-document "sampledb" "samplecoll" docdata)
+                  (either/from-either))
+          docdata2 (-> (json/encode {:foo "frob", :_id "foo"})
+                       (either/from-either))
+          doc2 (-> (api/persist-document "sampledb" "samplecoll" docdata2)
+                   (either/from-either))
+          req {:params {:dbname "sampledb"
+                        :collname "samplecoll"
+                        :docid "foo"}}
+          res (ctrls/document-revs-list req)]
+      (is (= (:status res) 200))
+      (is (= 2
+             (count (:body res))))
+      (is (= (s/to-plain-object doc2)
+             (first (:body res))))
+      (is (= (s/to-plain-object doc)
+             (last (:body res))))))
 
   (api/drop-collection "sampledb" "samplecoll")
   (api/drop-database "sampledb"))
