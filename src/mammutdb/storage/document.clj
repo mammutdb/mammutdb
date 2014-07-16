@@ -230,6 +230,14 @@
               (e/error :document-does-not-exist)
               (sp/record->document coll rec))))
 
+  (get-revisions-of [coll id conn]
+    (m/mlet [rec  (-<> (sp/get-revisions-tablename coll)
+                       (format "SELECT * FROM %s WHERE id = ?
+                                ORDER BY created_at DESC;" <>)
+                       (vector <> id)
+                       (sconn/query conn <>))]
+      (m/sequence (map #(sp/record->document coll %) rec))))
+
   (get-documents [coll filters conn]
     (m/mlet [res (->> (sp/get-mainstore-tablename coll)
                       (format "SELECT * FROM %s;")
@@ -267,6 +275,10 @@
 (defn get-document-by-rev
   [coll id rev conn]
   (sp/get-document-by-rev coll id rev conn))
+
+(defn get-revisions-of
+  [coll id conn]
+  (sp/get-revisions-of coll id conn))
 
 (defn drop-document
   [doc conn]

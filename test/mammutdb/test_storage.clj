@@ -274,4 +274,33 @@
             (is (= doc2 (either/from-either qmdoc2))))
 
         (s/drop-collection coll conn)
-        (s/drop-database db conn))))))
+        (s/drop-database db conn)))))
+
+  (testing "Document storage api revs semantics through doc"
+    (with-open [conn (j/make-connection @sconn/datasource)]
+      (let [db   (s/->database "testdb")
+            coll (either/from-either (s/create-collection db "testcoll" :json conn))]
+
+        (let [docdata (-> (json/encode {:name "foo"})
+                           (either/from-either))
+              mdoc    (s/persist-document coll docdata conn)
+              doc     (either/from-either mdoc)
+              mrevs   (s/get-revisions-of coll (.-id doc) conn)
+              revs    (either/from-either mrevs)]
+          (is (either/right? mrevs))
+          (is (= (count revs) 1))
+
+          (let [docdata (-> (s/to-plain-object doc)
+                            (assoc :name "bar")
+                            (json/encode)
+                            (either/from-either))
+                mdoc    (s/persist-document coll docdata conn)
+                doc     (either/from-either mdoc)
+                mrevs   (s/get-revisions-of coll (.-id doc) conn)
+                revs    (either/from-either mrevs)]
+            (is (either/right? mrevs))
+            (is (= (count revs) 2))
+            (is (= (first revs)
+                   doc))))
+
+        (s/drop-collection coll conn)))))

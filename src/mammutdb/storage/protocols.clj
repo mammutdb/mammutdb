@@ -62,7 +62,8 @@
 (defprotocol DocumentQueryable
   (get-documents [_ filters conn] "List and/or filter documents.")
   (get-document-by-rev [_ id rev conn] "Search document by id and rev")
-  (get-document-by-id [_ id conn] "Get document by id"))
+  (get-document-by-id [_ id conn] "Get document by id")
+  (get-revisions-of [_ id conn] "Get revisions of a document given its id"))
 
 (defprotocol Serializable
   (to-plain-object [_] "Convert object to plain clojure object"))
