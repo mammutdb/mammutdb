@@ -49,4 +49,5 @@
   get-documents
   get-document-by-id
   get-document-by-rev
+  get-revisions-of
   drop-document-by-id])

@@ -184,6 +184,32 @@
       (api/drop-collection "foodb" "collname1")
       (api/drop-database "foodb")))
 
+  (testing "Get revisions of a document"
+    (let [mdb      (api/create-database "foodb")
+          mcoll    (api/create-collection "foodb" "collname1")
+          docdata  (-> (json/encode {:name "foo"})
+                       (either/from-either))
+          mdoc     (api/persist-document "foodb" "collname1" docdata)
+          doc      (either/from-either mdoc)
+          docdata2 (-> (s/to-plain-object doc)
+                       (assoc :name "bar")
+                       (json/encode)
+                       (either/from-either))
+          mdoc     (api/persist-document "foodb" "collname1" docdata2)
+          doc2     (either/from-either mdoc)
+          mrevs    (api/get-revisions-of "foodb" "collname1" (.-id doc2))
+          revs     (either/from-either mrevs)]
+      (is (either/right? mrevs))
+      (is (= 2
+             (count revs)))
+      (is (= doc
+             (last revs)))
+      (is (= doc2
+             (first revs)))
+
+      (api/drop-collection "foodb" "collname1")
+      (api/drop-database "foodb")))
+
   (let [mdb     (api/create-database "foodb")
         mcoll   (api/create-collection "foodb" "collname1")]
 
