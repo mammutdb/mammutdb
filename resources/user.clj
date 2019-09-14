@@ -1,11 +1,12 @@
 (ns user
   (:require
    [mount.core :as mount :refer [defstate]]
+   [clj-uuid :as uuid]
    [clojure.pprint :refer [pprint]]
    [clojure.test :as test]
    [clojure.tools.namespace.repl :as r]
    [clojure.walk :refer [macroexpand-all]]
-   [mammutdb.txlog :as tx]
+   [mammutdb.txlog :as txlog]
    [mammutdb.txlog.psql :as txpg]
    [mammutdb.util.vertx-pgsql :as pg]))
 
@@ -27,15 +28,27 @@
   :start (pg/pool "postgresql://test@localhost/test")
   :stop (.close pool))
 
-(defstate transactor
-  :start (tx/transactor {::tx/type ::tx/psql
-                         ::txpg/pool pool})
-  :stop (.close transactor))
+(defstate producer
+  :start (txlog/producer {::txlog/type ::txlog/psql
+                          ::txpg/pool pool})
+  :stop (.close producer))
 
 (defstate consumer
-  :start (tx/consumer transactor)
+  :start (txlog/consumer {::txlog/type ::txlog/psql
+                          ::txpg/pool pool})
   :stop (.close consumer))
 
 (defn start
   []
   (mount/start))
+
+;; (comment
+;;   (let [txid (uuid/v1)
+;;         doc {:name "Andrey" :surname "Antukh"}]
+;;   (txlog/submit! producer txid [::put doc])
+
+;; (db/submit! [[::db/createns :persons]])
+
+;; (db/submit! [[::db/put :persons {::db/id 1 :name "Andrei" :age 31}]
+;;              [::db/put :persons {::db/id 2 :name "Vesi" :age 30}]
+;;              [::db/update :persons {::db/id 1 :name "Andrey"}]])

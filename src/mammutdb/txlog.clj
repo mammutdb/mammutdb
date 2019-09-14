@@ -5,7 +5,7 @@
 ;; Copyright (c) 2019 Andrey Antukh <niwi@niwi.nz>
 
 (ns mammutdb.txlog
-  "A transaction log public api."
+  "A general purpose transaction log (public api)."
   (:require
    [promesa.core :as p]
    [clojure.spec.alpha :as s]
@@ -37,11 +37,11 @@
   [opts]
   (throw (ex-info "Invalid consumer type" {:type (::type opts)})))
 
-
 ;; --- Transactor API
 
 (s/def ::id any?)
 (s/def ::submit-data (s/map-of keyword? any?))
+(s/def ::submit-key uuid?)
 (s/def ::producer #(satisfies? pt/Producer %))
 (s/def ::consumer #(satisfies? pt/Consumer %))
 (s/def ::offset int?)
@@ -50,11 +50,12 @@
   (s/keys :opt-un [::offset ::batch]))
 
 (defn submit!
-  [producer data]
+  [producer key data]
   (s/assert ::producer producer)
+  (s/assert ::submit-key key)
   (s/assert ::submit-data data)
-  (let [^bytes data (t/encode txop {:type :json-verbose})]
-    (pt/submit! producer data)))
+  (let [^bytes data (t/encode data {:type :json-verbose})]
+    (pt/submit! producer key data)))
 
 (defn poll
   [consumer opts]
@@ -62,8 +63,9 @@
   (s/assert ::poll-opts opts)
   (->> (pt/poll consumer opts)
        (p/map (fn [rows]
-                (mapv (fn [[offset data created-at]]
+                (mapv (fn [[offset key data created-at]]
                         {:offset offset
+                         :key key
                          :time created-at
                          :data (t/decode data)})
                       rows)))))

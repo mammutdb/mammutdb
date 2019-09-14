@@ -8,7 +8,7 @@
 
 (defprotocol Producer
   (init! [_] "Initialize transactor")
-  (submit! [_ txdata] "Submit a transaction into the transactor.")
+  (submit! [_ key data] "Submit a transaction into the transactor."))
 
 (defprotocol Consumer
   (poll [_ opts] "Request a next batch of tx records."))

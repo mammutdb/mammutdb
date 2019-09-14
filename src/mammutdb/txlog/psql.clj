@@ -80,14 +80,15 @@
           ops  [(str"create schema if not exists " schema)
                 (str "create table if not exists " schema ".txlog ("
                      "  id bigserial PRIMARY KEY,"
+                     "  key uuid NOT NULL UNIQUE,"
                      "  created_at timestamptz DEFAULT CURRENT_TIMESTAMP,"
                      "  data jsonb"
                      ")")]]
       @(pg/atomic pool
          (p/run! #(pg/query pool %) ops))))
 
-  (submit! [_ txdata]
-    (p/do! (impl-submit pool txdata)))
+  (submit! [_ key data]
+    (p/do! (impl-submit pool key data)))
 
   java.io.Closeable
   (close [_]
@@ -102,20 +103,21 @@
     :else (throw (ex-info "to-bytes: unexpected data" {:v v}))))
 
 (defn- impl-submit
-  [pool ^bytes txdata]
-  (let [sql "insert into public.txlog (data) values ($1::jsonb) returning id"
-        sdata (String. txdata "UTF-8")]
-    (p/map first (pg/query-one pool [sql sdata]))))
+  [pool key ^bytes data]
+  (let [sql "insert into public.txlog (key, data) values ($1::uuid, $2::jsonb) returning id"
+        sdata (String. data "UTF-8")]
+    (p/map first (pg/query-one pool [sql key sdata]))))
 
 (defn- impl-poll
   [pool {:keys [offset batch]
          :or {offset 0 batch 10}
          :as opts}]
-  (let [sql "select id, data, created_at from txlog where id >= $1 order by id limit $2"]
+  (let [sql "select id, key, data, created_at from txlog where id >= $1 order by id limit $2"]
     (->> (pg/query pool [sql offset batch])
          (p/map (fn [rows]
-                  (map (fn [[offset data created-at]]
+                  (map (fn [[offset key data created-at]]
                          [offset
+                          key
                           (to-bytes data)
                           (.toInstant created-at)])
                        rows))))))
