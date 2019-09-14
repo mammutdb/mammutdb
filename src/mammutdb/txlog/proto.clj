@@ -4,12 +4,11 @@
 ;;
 ;; Copyright (c) 2019 Andrey Antukh <niwi@niwi.nz>
 
-(ns mammutdb.tx.proto)
+(ns mammutdb.txlog.proto)
 
-(defprotocol Transactor
+(defprotocol Producer
   (init! [_] "Initialize transactor")
   (submit! [_ txdata] "Submit a transaction into the transactor.")
-  (consumer [_ opts] "Creates a consumer instance."))
 
-(defprotocol TransactorConsumer
+(defprotocol Consumer
   (poll [_ opts] "Request a next batch of tx records."))

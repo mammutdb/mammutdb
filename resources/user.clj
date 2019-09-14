@@ -5,8 +5,8 @@
    [clojure.test :as test]
    [clojure.tools.namespace.repl :as r]
    [clojure.walk :refer [macroexpand-all]]
-   [mammutdb.tx :as tx]
-   [mammutdb.tx.psql :as txpg]
+   [mammutdb.txlog :as tx]
+   [mammutdb.txlog.psql :as txpg]
    [mammutdb.util.vertx-pgsql :as pg]))
 
 (defn- run-tests

@@ -4,17 +4,18 @@
 ;;
 ;; Copyright (c) 2019 Andrey Antukh <niwi@niwi.nz>
 
-(ns mammutdb.tx.psql
+(ns mammutdb.txlog.psql
   "A postgresql backed transaction log implementation."
   (:require
    [clojure.spec.alpha :as s]
    [promesa.core :as p]
    [mammutdb.util.vertx-pgsql :as pg]
-   [mammutdb.tx.proto :as pt]))
+   [mammutdb.txlog.proto :as pt]))
 
 (declare impl-submit)
 (declare impl-poll)
-(declare ->Transactor)
+(declare ->Producer)
+(declare ->Consumer)
 
 ;; --- Public API
 
@@ -23,42 +24,58 @@
 (s/def ::uri string?)
 (s/def ::schema string?)
 
-(s/def ::transactor-params
+(s/def ::producer-params
   (s/keys :opt [::pool ::pool-opts ::uri ::schema]))
 
-(defn transactor
+(s/def ::consumer-params ::producer-params)
+
+(defn producer
   [{:keys [::pool ::pool-opts ::uri] :as opts}]
-  (s/assert ::transactor-params opts)
+  (s/assert ::producer-params opts)
   (cond
     (pg/pool? pool)
-    (let [tx (->Transactor pool opts false)]
+    (let [tx (->Producer pool opts false)]
       (pt/init! tx)
       tx)
 
     (string? uri)
     (let [pool (pg/pool uri pool-opts)
-          tx   (->Transactor pool opts true)]
+          tx   (->Producer pool opts true)]
       (pt/init! tx)
       tx)
 
     :else
-    (throw (ex-info "Invalid arguments" {:opts opts}))))
+    (throw (ex-info "producer: invalid arguments" {:opts opts}))))
+
+(defn consumer
+  [{:keys [::pool ::pool-opts ::uri] :as opts}]
+  (s/assert ::consumer-params opts)
+  (cond
+    (pg/pool? pool)
+    (->Consumer pool opts false)
+
+    (string? uri)
+    (let [pool (pg/pool uri pool-opts)]
+      (->Consumer pool opts true))
+
+    :else
+    (throw (ex-info "consumer: invalid arguments" {:opts opts}))))
 
 ;; --- Impl
 
-(deftype Consumer [pool]
-  pt/TransactorConsumer
+(deftype Consumer [pool opts close-pool?]
+  pt/Consumer
   (poll [_ opts]
     (impl-poll pool opts))
 
   java.io.Closeable
   (close [_]
-    ))
+    (when close-pool?
+      (.close pool))))
 
-(deftype Transactor [pool opts close-pool?]
-  pt/Transactor
+(deftype Producer [pool opts close-pool?]
+  pt/Producer
   (init! [_]
-    ;; TODO: run in a transaction
     (let [schema (::schema opts "public")
           ops  [(str"create schema if not exists " schema)
                 (str "create table if not exists " schema ".txlog ("
@@ -70,15 +87,19 @@
          (p/run! #(pg/query pool %) ops))))
 
   (submit! [_ txdata]
-    (p/do* (impl-submit pool txdata)))
-
-  (consumer [_ opts]
-    (->Consumer pool))
+    (p/do! (impl-submit pool txdata)))
 
   java.io.Closeable
   (close [_]
     (when close-pool?
       (.close pool))))
+
+(defn- to-bytes
+  [v]
+  (cond
+    (bytes? v) v
+    (string? v) (.getBytes v "UTF-8")
+    :else (throw (ex-info "to-bytes: unexpected data" {:v v}))))
 
 (defn- impl-submit
   [pool ^bytes txdata]
@@ -91,4 +112,11 @@
          :or {offset 0 batch 10}
          :as opts}]
   (let [sql "select id, data, created_at from txlog where id >= $1 order by id limit $2"]
-    (pg/query pool [sql offset batch])))
+    (->> (pg/query pool [sql offset batch])
+         (p/map (fn [rows]
+                  (map (fn [[offset data created-at]]
+                         [offset
+                          (to-bytes data)
+                          (.toInstant created-at)])
+                       rows))))))
+

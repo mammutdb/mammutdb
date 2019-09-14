@@ -119,7 +119,7 @@
   (->> (p/promise #(.getConnection pool (impl-handler %1 %2)))
        (p/map (fn [conn]
                 (let [tx (.begin conn)]
-                  (-> (p/do* (f conn))
+                  (-> (p/do! (f conn))
                       (p/catch (fn [e]
                                  (.rollback tx)
                                  (.close conn)
